@@ -96,24 +96,68 @@
         .hud-label { font-size: 8px; color: #444860; letter-spacing: 1.5px; }
         .gesture-hint { font-size: 8px; color: rgba(255,255,255,0.12); text-align: center; line-height: 1.6; }
 
-        /* ── Right: Fire button ── */
-        .right-zone {
-            position: absolute; right: 0; bottom: 0; width: 45%; height: calc(100% - 40px);
-            display: flex; flex-direction: column; justify-content: space-around; align-items: center;
+        /* ── Right: Full tap-to-shoot zone ── */
+        #shoot-zone {
+            position: absolute; right: 0; bottom: 0;
+            width: 45%; height: calc(100% - 40px);
+            touch-action: none; overflow: hidden;
+            /* Subtle red right-half tint so player knows it's the shoot area */
+            background: radial-gradient(ellipse at 80% 50%, rgba(255,40,40,0.07) 0%, transparent 70%);
+            border-left: 1px solid rgba(255,60,60,0.12);
         }
-        #btn-fire {
-            width: 120px; height: 120px; border-radius: 50%;
-            background: radial-gradient(circle, #ff4040 0%, #8b0000 100%);
-            border: 2px solid rgba(255,255,255,0.2);
-            box-shadow: 0 0 30px rgba(255,64,64,0.5), inset 0 0 20px rgba(0,0,0,0.3);
-            display: flex; justify-content: center; align-items: center;
-            font-weight: 900; font-size: 16px; letter-spacing: 2px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.6); touch-action: none;
-            transition: transform 0.05s ease, box-shadow 0.05s ease;
+        /* Semi-transparent crosshair watermark in center of zone */
+        #shoot-zone::before {
+            content: '';
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px; height: 60px;
+            border: 1.5px solid rgba(255,80,80,0.18);
+            border-radius: 50%;
+            pointer-events: none;
         }
-        #btn-fire:active, #btn-fire.pressed {
-            transform: scale(0.88);
-            box-shadow: 0 0 15px rgba(255,64,64,0.3), inset 0 0 30px rgba(0,0,0,0.5);
+        #shoot-zone::after {
+            content: 'TAP TO SHOOT';
+            position: absolute; bottom: 18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px; letter-spacing: 2.5px;
+            color: rgba(255,80,80,0.22); pointer-events: none;
+            white-space: nowrap;
+        }
+        /* Crosshair lines inside shoot zone */
+        .sz-crosshair {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px; height: 36px;
+            pointer-events: none;
+        }
+        .sz-line {
+            position: absolute; background: rgba(255,80,80,0.2);
+        }
+        .sz-line.h { width: 10px; height: 1.5px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+        .sz-line.h.l { left: calc(50% - 16px); }
+        .sz-line.h.r { left: calc(50% + 6px); }
+        .sz-line.v { width: 1.5px; height: 10px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+        .sz-line.v.t { top: calc(50% - 16px); }
+        .sz-line.v.b { top: calc(50% + 6px); }
+        /* Touch ripple that spawns at finger contact point */
+        .shoot-ripple {
+            position: absolute;
+            width: 0px; height: 0px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,80,80,0.9);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: shoot-ripple-expand 0.35s ease-out forwards;
+        }
+        @keyframes shoot-ripple-expand {
+            0%   { width: 0px;   height: 0px;   opacity: 1;   border-color: rgba(255,200,80,0.95); }
+            40%  { width: 70px;  height: 70px;  opacity: 0.7; border-color: rgba(255,80,80,0.7);  }
+            100% { width: 130px; height: 130px; opacity: 0;   border-color: rgba(255,40,40,0);    }
+        }
+        /* Zone active (while finger is held) — red glow intensifies */
+        #shoot-zone.active {
+            background: radial-gradient(ellipse at 80% 50%, rgba(255,40,40,0.14) 0%, transparent 70%);
+            border-left-color: rgba(255,60,60,0.3);
         }
 
         /* ── Effects overlays ── */
@@ -192,9 +236,15 @@
         </div>
     </div>
 
-    <!-- Right Fire Zone -->
-    <div class="right-zone">
-        <div id="btn-fire">FIRE</div>
+    <!-- Right: Full-screen Tap-to-Shoot Zone -->
+    <div id="shoot-zone">
+        <!-- Static crosshair guide -->
+        <div class="sz-crosshair">
+            <div class="sz-line h l"></div>
+            <div class="sz-line h r"></div>
+            <div class="sz-line v t"></div>
+            <div class="sz-line v b"></div>
+        </div>
     </div>
 </div>
 
@@ -627,11 +677,48 @@
     function setHandle(x, y) { jHandle.style.left = `${x}px`; jHandle.style.top = `${y}px`; }
 
     // ─────────────────────────────────────────────────────────────────────
-    // FIRE BUTTON
+    // SHOOT ZONE — tap anywhere in right half to fire
+    // Supports multi-touch so joystick can be held simultaneously.
     // ─────────────────────────────────────────────────────────────────────
-    const fireBtn = el('btn-fire');
-    fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); store.getState().setFire(true); fireBtn.classList.add('pressed'); });
-    fireBtn.addEventListener('touchend',   (e) => { e.preventDefault(); store.getState().setFire(false); fireBtn.classList.remove('pressed'); });
+    const shootZone = el('shoot-zone');
+    const activeTouches = new Set(); // track active touch IDs in shoot zone
+
+    function spawnRipple(x, y) {
+        const r = document.createElement('div');
+        r.className = 'shoot-ripple';
+        // x,y are page coords; convert to zone-relative
+        const rect = shootZone.getBoundingClientRect();
+        r.style.left = `${x - rect.left}px`;
+        r.style.top  = `${y - rect.top}px`;
+        shootZone.appendChild(r);
+        r.addEventListener('animationend', () => r.remove());
+    }
+
+    shootZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+            activeTouches.add(t.identifier);
+            spawnRipple(t.clientX, t.clientY);
+        }
+        store.getState().setFire(true);
+        shootZone.classList.add('active');
+    });
+
+    shootZone.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        for (const t of e.changedTouches) activeTouches.delete(t.identifier);
+        if (activeTouches.size === 0) {
+            store.getState().setFire(false);
+            shootZone.classList.remove('active');
+        }
+    });
+
+    shootZone.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        activeTouches.clear();
+        store.getState().setFire(false);
+        shootZone.classList.remove('active');
+    });
 
     // ─────────────────────────────────────────────────────────────────────
     // WEAPON SWIPE GESTURE (swipe body area = switch weapon)
@@ -640,14 +727,14 @@
 
     document.body.addEventListener('touchstart', (e) => {
         const id = e.target.id;
-        if (id === 'btn-fire' || id === 'joystick-container' || id === 'joystick-handle') return;
+        if (id === 'shoot-zone' || id === 'joystick-container' || id === 'joystick-handle') return;
         swipeStartX = e.touches[0].clientX;
         swipeStartTime = Date.now();
     }, { passive: true });
 
     document.body.addEventListener('touchend', (e) => {
         const id = e.target.id;
-        if (id === 'btn-fire' || id === 'joystick-container' || id === 'joystick-handle') return;
+        if (id === 'shoot-zone' || id === 'joystick-container' || id === 'joystick-handle') return;
         const dx = e.changedTouches[0].clientX - swipeStartX;
         if (Date.now() - swipeStartTime < 250 && Math.abs(dx) > 60) {
             store.getState().setWeaponSwipe(dx > 0 ? 1 : -1);
