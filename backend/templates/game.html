@@ -3,233 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GunSync FPS WebGL Game</title>
+    <title>GunSync FPS — Rapier Physics</title>
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-            background-color: #05050a;
-            color: #ffffff;
+            margin: 0; padding: 0; overflow: hidden;
+            width: 100vw; height: 100vh;
+            background-color: #05050a; color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-        
-        /* 2D HUD Layout */
+        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
         #hud-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 5;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5; pointer-events: none;
+            display: flex; flex-direction: column;
             justify-content: space-between;
-            padding: 30px;
-            box-sizing: border-box;
+            padding: 30px; box-sizing: border-box;
         }
-        
-        .hud-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
+        .hud-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .hud-panel {
             background: rgba(5, 10, 20, 0.6);
             border: 1px solid rgba(0, 255, 136, 0.2);
-            border-radius: 8px;
-            padding: 12px 24px;
+            border-radius: 8px; padding: 12px 24px;
             backdrop-filter: blur(10px);
             box-shadow: 0 0 20px rgba(0, 255, 136, 0.05);
         }
-
-        .hud-title {
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: #888da7;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-
-        .hud-value {
-            font-size: 28px;
-            font-weight: 900;
-            font-family: monospace;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-        }
-
+        .hud-title { font-size: 10px; font-weight: 800; letter-spacing: 2px; color: #888da7; margin-bottom: 4px; text-transform: uppercase; }
+        .hud-value { font-size: 28px; font-weight: 900; font-family: monospace; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
         .status-badge {
-            display: flex;
-            align-items: center;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 1.5px;
-            border-radius: 4px;
-            padding: 6px 14px;
+            display: flex; align-items: center;
+            font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+            border-radius: 4px; padding: 6px 14px;
             border: 1px solid #ff4040;
-            background: rgba(255, 64, 64, 0.1);
+            background: rgba(255, 64, 64, 0.1); color: #ff6060;
         }
-
-        .status-badge.connected {
-            border: 1px solid #00ff88;
-            background: rgba(0, 255, 136, 0.1);
-            color: #00ff88;
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+        .status-badge.connected { border: 1px solid #00ff88; background: rgba(0,255,136,0.1); color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.1); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4040; margin-right: 8px; }
+        .status-badge.connected .status-dot { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .hud-footer { display: flex; justify-content: space-between; align-items: flex-end; }
+        .ammo-panel { min-width: 140px; border-color: rgba(255,170,0,0.2); }
+        .ammo-panel.low { border-color: rgba(255,64,64,0.4); animation: pulse-border 1s infinite alternate; }
+        @keyframes pulse-border { from { border-color: rgba(255,64,64,0.2); } to { border-color: rgba(255,64,64,0.6); } }
+        .weapon-name { font-size: 18px; font-weight: 900; color: #ffaa00; letter-spacing: 1px; }
+        .reloading-indicator { color: #ffaa00; font-size: 14px; font-weight: bold; animation: blink 0.8s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 30px; height: 30px; z-index: 10; pointer-events: none; }
+        .crosshair-line { background: #00ff88; position: absolute; box-shadow: 0 0 6px #00ff88; }
+        .crosshair-h { width: 8px; height: 2px; top: 14px; }
+        .crosshair-v { width: 2px; height: 8px; left: 14px; }
+        .ch-left { left: 0; } .ch-right { right: 0; } .ch-top { top: 0; } .ch-bottom { bottom: 0; }
+        .crosshair-dot { width: 4px; height: 4px; background: #00ff88; border-radius: 50%; position: absolute; top: 13px; left: 13px; box-shadow: 0 0 6px #00ff88; }
+        #kill-feed { position: absolute; right: 30px; top: 120px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; z-index: 10; }
+        .kill-msg { background: rgba(0,255,136,0.15); border: 1px solid #00ff88; border-radius: 4px; color: #00ff88; font-weight: 800; font-size: 13px; letter-spacing: 1.5px; padding: 8px 16px; animation: slide-in 0.2s ease-out; }
+        @keyframes slide-in { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        #screen-flash { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,64,64,0.15); pointer-events: none; opacity: 0; z-index: 2; transition: opacity 0.05s ease-out; }
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #05050a; z-index: 100;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 20px;
         }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ff4040;
-            margin-right: 8px;
-        }
-
-        .status-badge.connected .status-dot {
-            background: #00ff88;
-            box-shadow: 0 0 8px #00ff88;
-        }
-
-        /* Bottom section */
-        .hud-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .ammo-panel {
-            min-width: 140px;
-            border-color: rgba(255, 170, 0, 0.2);
-        }
-
-        .ammo-panel.low {
-            border-color: rgba(255, 64, 64, 0.4);
-            animation: pulse-border 1s infinite alternate;
-        }
-
-        @keyframes pulse-border {
-            from { border-color: rgba(255, 64, 64, 0.2); }
-            to { border-color: rgba(255, 64, 64, 0.6); }
-        }
-
-        .weapon-name {
-            font-size: 18px;
-            font-weight: 900;
-            color: #ffaa00;
-            letter-spacing: 1px;
-        }
-
-        .reloading-indicator {
-            color: #ffaa00;
-            font-size: 14px;
-            font-weight: bold;
-            animation: blink 0.8s infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        /* 3D Crosshair */
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 30px;
-            height: 30px;
-            z-index: 10;
-            pointer-events: none;
-        }
-        .crosshair-line {
-            background: #00ff88;
-            position: absolute;
-            box-shadow: 0 0 6px #00ff88;
-        }
-        .crosshair-h {
-            width: 8px;
-            height: 2px;
-            top: 14px;
-        }
-        .crosshair-v {
-            width: 2px;
-            height: 8px;
-            left: 14px;
-        }
-        .ch-left { left: 0; }
-        .ch-right { right: 0; }
-        .ch-top { top: 0; }
-        .ch-bottom { bottom: 0; }
-        .crosshair-dot {
-            width: 4px;
-            height: 4px;
-            background: #00ff88;
-            border-radius: 50%;
-            position: absolute;
-            top: 13px;
-            left: 13px;
-            box-shadow: 0 0 6px #00ff88;
-        }
-
-        /* Score Feed / Kill notifications */
-        #kill-feed {
-            position: absolute;
-            right: 30px;
-            top: 120px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 10px;
-            z-index: 10;
-        }
-
-        .kill-msg {
-            background: rgba(0, 255, 136, 0.15);
-            border: 1px solid #00ff88;
-            border-radius: 4px;
-            color: #00ff88;
-            font-weight: 800;
-            font-size: 13px;
-            letter-spacing: 1.5px;
-            padding: 8px 16px;
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
-            animation: slide-in 0.2s ease-out;
-        }
-
-        @keyframes slide-in {
-            from { transform: translateX(50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* Screen hit flash overlay */
-        #screen-flash {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(255, 64, 64, 0.15);
-            pointer-events: none;
-            opacity: 0;
-            z-index: 2;
-            transition: opacity 0.05s ease-out;
+        #loading-bar-bg { width: 300px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        #loading-bar { height: 100%; width: 0%; background: #00ff88; border-radius: 2px; box-shadow: 0 0 10px #00ff88; transition: width 0.3s ease; }
+        #loading-text { font-size: 11px; letter-spacing: 3px; color: #888da7; }
+        #tech-badge {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            font-size: 9px; letter-spacing: 2px; color: rgba(0,255,136,0.25);
+            z-index: 10; pointer-events: none; white-space: nowrap;
         }
     </style>
 </head>
 <body>
+    <!-- Loading screen -->
+    <div id="loading-overlay">
+        <div style="font-size:48px;">🔫</div>
+        <div style="font-size:22px;font-weight:900;letter-spacing:4px;">GUNSYNC FPS</div>
+        <div id="loading-bar-bg"><div id="loading-bar"></div></div>
+        <div id="loading-text">LOADING RAPIER3D PHYSICS...</div>
+    </div>
+
     <div id="canvas-container"></div>
     <div id="screen-flash"></div>
     <div id="crosshair">
@@ -239,883 +90,616 @@
         <div class="crosshair-line crosshair-v ch-bottom"></div>
         <div class="crosshair-dot"></div>
     </div>
-
-    <!-- HUD -->
     <div id="hud-container">
         <div class="hud-header">
             <div class="hud-panel">
                 <div class="hud-title">Score</div>
                 <div class="hud-value" id="val-score">0</div>
             </div>
-            
             <div class="status-badge" id="val-connection">
                 <div class="status-dot"></div>
                 <span id="txt-connection">WAITING FOR CONTROLLER...</span>
             </div>
         </div>
-
         <div id="kill-feed"></div>
-
         <div class="hud-footer">
             <div class="hud-panel">
-                <div class="hud-title">FPS</div>
-                <div class="hud-value" style="font-size: 14px;" id="val-fps">60</div>
+                <div class="hud-title">FPS · Physics</div>
+                <div class="hud-value" style="font-size:14px;" id="val-fps">—</div>
             </div>
-
             <div class="hud-panel ammo-panel" id="panel-ammo">
-                <div class="hud-title">Weapon & Ammo</div>
+                <div class="hud-title">Weapon &amp; Ammo</div>
                 <div class="weapon-name" id="val-weapon">PISTOL</div>
                 <div class="hud-value" id="val-ammo">12/12</div>
-                <div class="reloading-indicator" style="display: none;" id="lbl-reloading">RELOADING...</div>
+                <div class="reloading-indicator" style="display:none;" id="lbl-reloading">RELOADING...</div>
             </div>
         </div>
     </div>
+    <div id="tech-badge">⚡ RAPIER3D PHYSICS &nbsp;·&nbsp; ZUSTAND STATE &nbsp;·&nbsp; W3C WEBSOCKET &nbsp;·&nbsp; THREE.JS</div>
 
-    <!-- Three.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        // WebSocket setup
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/game`;
-        let socket = null;
-
-        // UI references
-        const scoreTxt = document.getElementById('val-score');
-        const connectionBadge = document.getElementById('val-connection');
-        const connectionTxt = document.getElementById('txt-connection');
-        const ammoTxt = document.getElementById('val-ammo');
-        const weaponTxt = document.getElementById('val-weapon');
-        const reloadingTxt = document.getElementById('lbl-reloading');
-        const ammoPanel = document.getElementById('panel-ammo');
-        const killFeed = document.getElementById('kill-feed');
-        const screenFlash = document.getElementById('screen-flash');
-        const fpsTxt = document.getElementById('val-fps');
-
-        // Game Configuration
-        let score = 0;
-        let ammoCurrent = 12;
-        let ammoMax = 12;
-        let isReloading = false;
-        let currentWeapon = 'pistol';
-
-        const weaponConfig = {
-            pistol: { displayName: 'Pistol', maxAmmo: 12, damage: 35, fireRate: 2.5, reloadTime: 1200, color: '#ffaa00', soundType: 'pistol' },
-            smg: { displayName: 'SMG', maxAmmo: 30, damage: 20, fireRate: 8, reloadTime: 1800, color: '#00aaff', soundType: 'smg' },
-            shotgun: { displayName: 'Shotgun', maxAmmo: 6, damage: 18, fireRate: 1.2, reloadTime: 2200, color: '#ff4040', soundType: 'shotgun', pellets: 8 },
-            sniper: { displayName: 'Sniper', maxAmmo: 5, damage: 150, fireRate: 0.6, reloadTime: 2800, color: '#00ff88', soundType: 'sniper' }
-        };
-
-        const weapons = ['pistol', 'smg', 'shotgun', 'sniper'];
-        let weaponIndex = 0;
-        let nextFireTime = 0;
-
-        // 3D Scene Setup variables
-        let scene, camera, renderer;
-        let targets = [];
-        let particles = [];
-        let playerVelocity = new THREE.Vector3();
-        let joystickInput = new THREE.Vector2();
-        let targetRotation = new THREE.Euler(0, 0, 0, 'YXZ');
-        let currentRotation = new THREE.Euler(0, 0, 0, 'YXZ');
-        let gunGroup, muzzleFlashSprite;
-        let laserLines = [];
-
-        // Audio System
-        let audioCtx = null;
-        function getAudioContext() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioCtx;
+    <!-- ── Import Map: all open-source libs, zero install ── -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three":                      "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+            "@dimforge/rapier3d-compat":  "https://esm.sh/@dimforge/rapier3d-compat@0.12.0",
+            "zustand/vanilla":            "https://cdn.jsdelivr.net/npm/zustand@5/vanilla/+esm"
         }
+    }
+    </script>
 
-        // Web Audio Synthesized Sounds
-        function playLaserSound(type) {
-            const ctx = getAudioContext();
-            if (ctx.state === 'suspended') ctx.resume();
+    <script type="module">
+        import * as THREE  from 'three';
+        import RAPIER      from '@dimforge/rapier3d-compat';
+        import { createStore } from 'zustand/vanilla';
 
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+        // ─────────────────────────────────────────────────────────────────────
+        // ZUSTAND GAME STATE STORE
+        // ─────────────────────────────────────────────────────────────────────
+        const gameStore = createStore((set, get) => ({
+            // Network
+            connected: false,
 
-            osc.connect(gain);
-            gain.connect(ctx.destination);
+            // Live input from phone (set by WebSocket handler)
+            gyro:     { pitch: 0, yaw: 0 },
+            joystick: { x: 0, y: 0 },
+            fire: false, reload: false, weaponSwipe: 0,
 
-            const now = ctx.currentTime;
-            
-            if (type === 'pistol') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(450, now);
-                osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-                osc.start(now);
-                osc.stop(now + 0.15);
-            } else if (type === 'smg') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-                osc.start(now);
-                osc.stop(now + 0.08);
-            } else if (type === 'shotgun') {
-                // Noise buffer + low pitch swoop
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-                osc.start(now);
-                osc.stop(now + 0.25);
-                
-                // Add noise kick
-                playNoiseSound(0.25, 0.4);
-            } else if (type === 'sniper') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.40);
-                gain.gain.setValueAtTime(0.6, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.40);
-                osc.start(now);
-                osc.stop(now + 0.40);
-                
-                playNoiseSound(0.40, 0.6);
-            }
-        }
+            // Game state
+            score: 0, ammo: 12, ammoMax: 12,
+            weapon: 'pistol', isReloading: false, fps: 0,
 
-        function playNoiseSound(duration, volume) {
-            const ctx = getAudioContext();
-            const bufferSize = ctx.sampleRate * duration;
-            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-            
-            const noise = ctx.createBufferSource();
-            noise.buffer = buffer;
-            
-            const filter = ctx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.value = 600;
-            
-            const gain = ctx.createGain();
-            gain.gain.setValueAtTime(volume, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-            
-            noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(ctx.destination);
-            
-            noise.start();
-            noise.stop(ctx.currentTime + duration);
-        }
+            // Actions
+            setConnected:  (v)   => set({ connected: v }),
+            setInput: (d) => set({
+                gyro:     { pitch: d.pitch || 0, yaw: d.yaw || 0 },
+                joystick: { x: d.joystickX || 0, y: d.joystickY || 0 },
+                fire: !!d.fire, reload: !!d.reload, weaponSwipe: d.weaponSwipe || 0,
+            }),
+            addScore:     (pts) => set((s) => ({ score: s.score + pts })),
+            setWeapon:    (w, a, am) => set({ weapon: w, ammo: a, ammoMax: am }),
+            setAmmo:      (a)   => set({ ammo: a }),
+            setReloading: (v)   => set({ isReloading: v }),
+            setFps:       (v)   => set({ fps: v }),
+        }));
 
-        function playReloadSound() {
-            const ctx = getAudioContext();
-            const now = ctx.currentTime;
-            
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.setValueAtTime(450, now + 0.15);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-            
-            osc.start(now);
-            osc.stop(now + 0.3);
-        }
+        // ─────────────────────────────────────────────────────────────────────
+        // REACTIVE HUD — Zustand subscriptions update DOM
+        // ─────────────────────────────────────────────────────────────────────
+        const el = (id) => document.getElementById(id);
+        const scoreTxt        = el('val-score');
+        const connectionBadge = el('val-connection');
+        const connectionTxt   = el('txt-connection');
+        const ammoTxt         = el('val-ammo');
+        const weaponTxt       = el('val-weapon');
+        const reloadingTxt    = el('lbl-reloading');
+        const ammoPanel       = el('panel-ammo');
+        const killFeed        = el('kill-feed');
+        const screenFlash     = el('screen-flash');
+        const fpsTxt          = el('val-fps');
 
-        function playEmptySound() {
-            const ctx = getAudioContext();
-            const now = ctx.currentTime;
-            
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, now);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
-            
-            osc.start(now);
-            osc.stop(now + 0.05);
-        }
+        gameStore.subscribe((s, prev) => {
+            if (s.score     !== prev.score)     scoreTxt.innerText = s.score;
+            if (s.fps       !== prev.fps)       fpsTxt.innerText   = s.fps;
 
-        function playExplosionSound() {
-            const ctx = getAudioContext();
-            const now = ctx.currentTime;
-            
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(30, now + 0.5);
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
-            
-            osc.start(now);
-            osc.stop(now + 0.5);
-            
-            playNoiseSound(0.5, 0.3);
-        }
-
-        // ── WebSocket Connect
-        function connectSocket() {
-            socket = new WebSocket(wsUrl);
-            
-            socket.onopen = () => {
-                connectionBadge.classList.add('connected');
-                connectionTxt.innerText = 'CONTROLLER ONLINE';
-            };
-
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'input') {
-                        handleControllerInput(data);
-                    } else if (data.type === 'status') {
-                        if (!data.phoneConnected) {
-                            connectionBadge.classList.remove('connected');
-                            connectionTxt.innerText = 'WAITING FOR CONTROLLER...';
-                        }
-                    }
-                } catch (e) {
-                    console.log('WS parsing error:', e);
-                }
-            };
-
-            socket.onclose = () => {
-                connectionBadge.classList.remove('connected');
-                connectionTxt.innerText = 'WS OFFLINE — RECONNECTING...';
-                setTimeout(connectSocket, 2000);
-            };
-        }
-
-        // ── Handle Input Stream from Phone
-        let lastFireState = false;
-        function handleControllerInput(data) {
-            // Gyro Aiming Angles (Beta represents pitch, Alpha represents yaw)
-            targetRotation.x = THREE.MathUtils.degToRad(data.pitch);
-            targetRotation.y = THREE.MathUtils.degToRad(data.yaw);
-
-            // Joystick Movement
-            joystickInput.x = data.joystickX;
-            joystickInput.y = data.joystickY;
-
-            // Trigger firing based on weapon type (semi-auto vs auto)
-            const config = weaponConfig[currentWeapon];
-            if (data.fire) {
-                if (config.isAutomatic) {
-                    shoot();
-                } else if (!lastFireState) {
-                    shoot();
-                }
-            }
-            lastFireState = data.fire;
-
-            // Shake reload gesture
-            if (data.reload && !isReloading) {
-                reload();
+            if (s.connected !== prev.connected) {
+                connectionBadge.classList.toggle('connected', s.connected);
+                connectionTxt.innerText = s.connected ? 'CONTROLLER ONLINE' : 'WAITING FOR CONTROLLER...';
             }
 
-            // Swipe to switch weapons
-            if (data.weaponSwipe !== 0) {
-                switchWeapon(data.weaponSwipe);
-            }
-        }
-
-        // ── Shoot weapon logic
-        function shoot() {
-            if (isReloading) return;
-            
-            if (ammoCurrent <= 0) {
-                playEmptySound();
-                return;
-            }
-
-            const now = performance.now();
-            const config = weaponConfig[currentWeapon];
-            if (now < nextFireTime) return;
-
-            nextFireTime = now + (1000 / config.fireRate);
-            ammoCurrent--;
-            updateHUD();
-
-            // Sound
-            playLaserSound(config.soundType);
-
-            // Outgoing Recoil command back to phone
-            sendRecoilEvent(config);
-
-            // Recoil Animation on Gun Model
-            gunGroup.position.z = 0.2; // Move gun back
-
-            // Muzzle flash
-            muzzleFlashSprite.scale.setScalar(0.4 + Math.random() * 0.2);
-            setTimeout(() => muzzleFlashSprite.scale.setScalar(0), 50);
-
-            // Raycast projectile
-            const raycaster = new THREE.Raycaster();
-            
-            // Multiple pellets (for Shotgun spread)
-            const totalPellets = config.pellets || 1;
-            for (let p = 0; p < totalPellets; p++) {
-                const spreadAngle = (config.spread || 0) * (Math.PI / 180);
-                const offset = new THREE.Vector2(
-                    (Math.random() - 0.5) * spreadAngle,
-                    (Math.random() - 0.5) * spreadAngle
-                );
-
-                // Setup laser line endpoints
-                const origin = new THREE.Vector3().copy(camera.position);
-                // Offset origin to align with gun tip
-                origin.add(new THREE.Vector3(0.12, -0.15, -0.4).applyQuaternion(camera.quaternion));
-
-                // Raycast in camera direction plus spread offset
-                const targetDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                if (offset.length() > 0) {
-                    targetDir.add(new THREE.Vector3(offset.x, offset.y, 0).applyQuaternion(camera.quaternion)).normalize();
-                }
-
-                raycaster.set(camera.position, targetDir);
-                const intersects = raycaster.intersectObjects(targets);
-
-                let hitPoint = new THREE.Vector3().copy(camera.position).addScaledVector(targetDir, 50);
-
-                if (intersects.length > 0) {
-                    const hitObj = intersects[0];
-                    hitPoint.copy(hitObj.point);
-
-                    // Register hit on Target Drone
-                    const targetDrone = hitObj.object;
-                    const killed = targetDrone.takeDamage(config.damage, hitPoint);
-                    
-                    if (killed) {
-                        score += 100;
-                        sendHitEvent(targetDrone.name, true);
-                        showKillFeed(targetDrone.name);
-                        playExplosionSound();
-                    } else {
-                        sendHitEvent(targetDrone.name, false);
-                    }
-                }
-
-                // Render Laser beam
-                createLaserBeam(origin, hitPoint, config.color);
-            }
-
-            if (ammoCurrent <= 0) {
-                reload();
-            }
-        }
-
-        // ── Weapon Reload
-        function reload() {
-            if (isReloading || ammoCurrent === ammoMax) return;
-            isReloading = true;
-            updateHUD();
-            playReloadSound();
-
-            sendAmmoStateToPhone();
-
-            setTimeout(() => {
-                ammoCurrent = ammoMax;
-                isReloading = false;
-                updateHUD();
-                sendAmmoStateToPhone();
-            }, weaponConfig[currentWeapon].reloadTime);
-        }
-
-        // ── Switch weapons
-        function switchWeapon(direction) {
-            if (isReloading) return;
-            
-            weaponIndex = (weaponIndex + direction + weapons.length) % weapons.length;
-            currentWeapon = weapons[weaponIndex];
-            
-            const config = weaponConfig[currentWeapon];
-            ammoMax = config.maxAmmo;
-            ammoCurrent = config.maxAmmo;
-            
-            // Adjust 3D weapon model color to reflect weapon type
-            const gunMaterial = gunGroup.children[0].material;
-            gunMaterial.color.set(config.color);
-            gunMaterial.emissive.set(config.color).multiplyScalar(0.2);
-
-            updateHUD();
-            sendAmmoStateToPhone();
-        }
-
-        // ── UI updates
-        function updateHUD() {
-            scoreTxt.innerText = score;
-            weaponTxt.innerText = currentWeapon.toUpperCase();
-            weaponTxt.style.color = weaponConfig[currentWeapon].color;
-            
-            if (isReloading) {
-                ammoTxt.style.display = 'none';
-                reloadingTxt.style.display = 'block';
-                ammoPanel.classList.add('low');
-            } else {
-                ammoTxt.style.display = 'block';
-                reloadingTxt.style.display = 'none';
-                ammoTxt.innerText = `${ammoCurrent}/${ammoMax}`;
-                if (ammoCurrent < 4) {
+            if (s.weapon !== prev.weapon || s.ammo !== prev.ammo || s.isReloading !== prev.isReloading) {
+                weaponTxt.innerText    = s.weapon.toUpperCase();
+                weaponTxt.style.color  = weaponConfig[s.weapon]?.color || '#ffaa00';
+                if (s.isReloading) {
+                    ammoTxt.style.display      = 'none';
+                    reloadingTxt.style.display = 'block';
                     ammoPanel.classList.add('low');
                 } else {
-                    ammoPanel.classList.remove('low');
+                    ammoTxt.style.display      = 'block';
+                    reloadingTxt.style.display = 'none';
+                    ammoTxt.innerText = `${s.ammo}/${s.ammoMax}`;
+                    ammoPanel.classList.toggle('low', s.ammo < 4);
                 }
             }
+        });
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WEAPON CONFIG
+        // ─────────────────────────────────────────────────────────────────────
+        const weaponConfig = {
+            pistol:  { maxAmmo: 12, damage: 35,  fireRate: 2.5, reloadTime: 1200, color: '#ffaa00', sound: 'pistol',  auto: false },
+            smg:     { maxAmmo: 30, damage: 20,  fireRate: 8,   reloadTime: 1800, color: '#00aaff', sound: 'smg',     auto: true  },
+            shotgun: { maxAmmo: 6,  damage: 18,  fireRate: 1.2, reloadTime: 2200, color: '#ff4040', sound: 'shotgun', auto: false, pellets: 8, spread: 4 },
+            sniper:  { maxAmmo: 5,  damage: 150, fireRate: 0.6, reloadTime: 2800, color: '#00ff88', sound: 'sniper',  auto: false },
+        };
+        const weapons = ['pistol', 'smg', 'shotgun', 'sniper'];
+        let weaponIndex = 0, nextFireTime = 0;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // W3C WEBSOCKET (native browser API)
+        // ─────────────────────────────────────────────────────────────────────
+        const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl   = `${wsProto}//${location.host}/ws/game`;
+        let socket = null, lastFireState = false;
+
+        function connectSocket() {
+            socket = new WebSocket(wsUrl);
+            socket.onopen    = ()  => gameStore.getState().setConnected(true);
+            socket.onclose   = ()  => { gameStore.getState().setConnected(false); setTimeout(connectSocket, 2000); };
+            socket.onerror   = ()  => socket.close();
+            socket.onmessage = (ev) => {
+                try {
+                    const d = JSON.parse(ev.data);
+                    if (d.type === 'input') {
+                        gameStore.getState().setInput(d);
+                        processInput(d);
+                    } else if (d.type === 'status' && !d.phoneConnected) {
+                        gameStore.getState().setConnected(false);
+                    }
+                } catch(_) {}
+            };
         }
 
-        function showKillFeed(enemyName) {
-            const msg = document.createElement('div');
-            msg.className = 'kill-msg';
-            msg.innerText = `☠ ${enemyName.toUpperCase()} DOWN  +100`;
-            killFeed.appendChild(msg);
-
-            // Trigger hit flash
-            screenFlash.style.opacity = 1;
-            setTimeout(() => screenFlash.style.opacity = 0, 50);
-
-            setTimeout(() => {
-                msg.style.opacity = 0;
-                setTimeout(() => msg.remove(), 200);
-            }, 2500);
-        }
-
-        // ── Outgoing events to Server (Relayed to Phone)
-        function sendRecoilEvent(config) {
+        function wsSend(obj) {
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'recoil',
-                    gun: currentWeapon,
-                    pattern: config.recoilPattern,
-                    duration: config.recoilDuration,
-                    intensity: config.recoilIntensity
-                }));
+                socket.send(JSON.stringify(obj));
             }
         }
 
-        function sendHitEvent(enemyId, isKill) {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'hit',
-                    enemyId: enemyId,
-                    isKill: isKill,
-                    score: score
-                }));
-            }
+        // ─────────────────────────────────────────────────────────────────────
+        // WEB AUDIO SYNTHESIZER
+        // ─────────────────────────────────────────────────────────────────────
+        let audioCtx = null;
+        function getAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
         }
-
-        function sendAmmoStateToPhone() {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'ammo',
-                    weapon: currentWeapon,
-                    ammoCurrent: ammoCurrent,
-                    ammoMax: ammoMax,
-                    isReloading: isReloading
-                }));
-            }
+        function tone(type, f0, f1, dur, vol = 0.3) {
+            const ctx = getAudio(), now = ctx.currentTime;
+            const osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(f0, now);
+            osc.frequency.exponentialRampToValueAtTime(f1, now + dur);
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + dur);
+            osc.start(now); osc.stop(now + dur);
         }
+        function noise(dur, vol = 0.3) {
+            const ctx = getAudio(), now = ctx.currentTime;
+            const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource(); src.buffer = buf;
+            const flt = ctx.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 600;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+            src.connect(flt); flt.connect(gain); gain.connect(ctx.destination);
+            src.start(); src.stop(now + dur);
+        }
+        const sounds = {
+            pistol:  () => tone('sawtooth', 450, 80, 0.15, 0.3),
+            smg:     () => tone('triangle', 600, 100, 0.08, 0.2),
+            shotgun: () => { tone('sawtooth', 200, 40, 0.25, 0.5); noise(0.25, 0.4); },
+            sniper:  () => { tone('sawtooth', 800, 50, 0.4, 0.6); noise(0.4, 0.6); },
+            reload:  () => tone('sine', 300, 450, 0.3, 0.15),
+            empty:   () => tone('sine', 800, 800, 0.05, 0.1),
+            explode: () => { tone('sawtooth', 150, 30, 0.5, 0.4); noise(0.5, 0.3); },
+        };
 
-        // ─────────────────────────────────────────────
-        // 3D Scene Initialization (WebGL)
-        // ─────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
+        // THREE.JS SCENE
+        // ─────────────────────────────────────────────────────────────────────
+        let scene, camera, renderer;
+        let targets = [], particles = [], laserLines = [];
+        let gunGroup, muzzleFlash;
+
+        const targetRot  = new THREE.Euler(0, 0, 0, 'YXZ');
+        const currentRot = new THREE.Euler(0, 0, 0, 'YXZ');
+        let currentTilt = 0, bobTimer = 0;
+
+        const PILLAR_POSITIONS = [
+            [-15,-15],[15,-15],[-15,15],[15,15],
+            [-30,0],[30,0],[0,-30],[0,30]
+        ];
+
         function init3D() {
-            const container = document.getElementById('canvas-container');
-
-            // 1. Create Scene
+            const container = el('canvas-container');
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x05050a, 0.015);
 
-            // 2. Camera setup
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
             camera.position.set(0, 1.8, 0);
 
-            // 3. Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(innerWidth, innerHeight);
+            renderer.setPixelRatio(devicePixelRatio);
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            // 4. Lights
-            const ambient = new THREE.AmbientLight(0x0a0f24);
-            scene.add(ambient);
+            scene.add(new THREE.AmbientLight(0x0a0f24));
+            const dir = new THREE.DirectionalLight(0x00ff88, 0.4);
+            dir.position.set(20, 40, 20); scene.add(dir);
 
-            const dirLight = new THREE.DirectionalLight(0x00ff88, 0.4);
-            dirLight.position.set(20, 40, 20);
-            scene.add(dirLight);
-
-            // 5. Build Arena floor/walls (Procedural grid)
             buildArena();
-
-            // 6. Create Gun model
             buildGun();
+            for (let i = 1; i <= 6; i++) spawnDrone(`Drone_${i}`);
 
-            // 7. Spawn Target Drones
-            for (let i = 1; i <= 6; i++) {
-                spawnTarget(`Drone_${i}`);
-            }
-
-            // Window resize handler
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
+            addEventListener('resize', () => {
+                camera.aspect = innerWidth / innerHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setSize(innerWidth, innerHeight);
             });
         }
 
-        // ── Procedural Neon Arena
         function buildArena() {
-            const floorGeo = new THREE.PlaneGeometry(100, 100);
-            const floorMat = new THREE.MeshStandardMaterial({
-                color: 0x050811,
-                roughness: 0.8,
-            });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(100, 100),
+                new THREE.MeshStandardMaterial({ color: 0x050811, roughness: 0.8 })
+            );
             floor.rotation.x = -Math.PI / 2;
             scene.add(floor);
+            const grid = new THREE.GridHelper(100, 50, 0x00ff88, 0x112233);
+            grid.position.y = 0.01; scene.add(grid);
 
-            // Grid helper for the neon floor grid lines
-            const gridHelper = new THREE.GridHelper(100, 50, 0x00ff88, 0x112233);
-            gridHelper.position.y = 0.01;
-            scene.add(gridHelper);
+            const pGeo = new THREE.BoxGeometry(2, 10, 2);
+            const pMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1d, roughness: 0.5, metalness: 0.8 });
+            const oMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.15 });
 
-            // Neon glowing columns/pillars in the scene
-            const pillarGeo = new THREE.BoxGeometry(2, 10, 2);
-            const pillarMat = new THREE.MeshStandardMaterial({
-                color: 0x0a0f1d,
-                roughness: 0.5,
-                metalness: 0.8
-            });
-
-            const pillarPositions = [
-                [-15, -15], [15, -15], [-15, 15], [15, 15],
-                [-30, 0], [30, 0], [0, -30], [0, 30]
-            ];
-
-            pillarPositions.forEach(([x, z]) => {
-                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-                pillar.position.set(x, 5, z);
-                scene.add(pillar);
-
-                // Add glowing outline edge for neon feel
-                const outlineGeo = new THREE.BoxGeometry(2.05, 10.05, 2.05);
-                const outlineMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.15 });
-                const outline = new THREE.Mesh(outlineGeo, outlineMat);
-                outline.position.set(x, 5, z);
-                scene.add(outline);
+            PILLAR_POSITIONS.forEach(([x, z]) => {
+                const p = new THREE.Mesh(pGeo, pMat); p.position.set(x, 5, z); scene.add(p);
+                const o = new THREE.Mesh(new THREE.BoxGeometry(2.05, 10.05, 2.05), oMat); o.position.set(x, 5, z); scene.add(o);
             });
         }
 
-        // ── Build 3D Gun Model attached to camera
         function buildGun() {
             gunGroup = new THREE.Group();
-            
-            // Simple Sci-fi Blaster shape
-            const barrelGeo = new THREE.BoxGeometry(0.06, 0.06, 0.4);
-            const gunMat = new THREE.MeshStandardMaterial({
-                color: 0xffaa00,
-                roughness: 0.2,
-                metalness: 0.9,
-                emissive: 0xffaa00,
-                emissiveIntensity: 0.1
-            });
-            const barrel = new THREE.Mesh(barrelGeo, gunMat);
-            barrel.position.set(0, 0, -0.2);
-            gunGroup.add(barrel);
+            const mat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.2, metalness: 0.9, emissive: 0xffaa00, emissiveIntensity: 0.1 });
 
-            const handleGeo = new THREE.BoxGeometry(0.05, 0.12, 0.06);
-            const handle = new THREE.Mesh(handleGeo, gunMat);
-            handle.position.set(0, -0.08, -0.05);
-            handle.rotation.x = -Math.PI / 6;
-            gunGroup.add(handle);
+            const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.4), mat);
+            barrel.position.set(0, 0, -0.2); gunGroup.add(barrel);
 
-            // Muzzle flash particle sprite
-            const flashCanvas = document.createElement('canvas');
-            flashCanvas.width = 64;
-            flashCanvas.height = 64;
-            const fCtx = flashCanvas.getContext('2d');
-            const grad = fCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-            grad.addColorStop(0.3, 'rgba(255, 200, 0, 0.8)');
-            grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
-            fCtx.fillStyle = grad;
-            fCtx.fillRect(0, 0, 64, 64);
+            const handle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.06), mat);
+            handle.position.set(0, -0.08, -0.05); handle.rotation.x = -Math.PI / 6; gunGroup.add(handle);
 
-            const flashTexture = new THREE.CanvasTexture(flashCanvas);
-            const flashMat = new THREE.SpriteMaterial({ map: flashTexture, transparent: true, blending: THREE.AdditiveBlending });
-            muzzleFlashSprite = new THREE.Sprite(flashMat);
-            muzzleFlashSprite.position.set(0, 0, -0.42);
-            muzzleFlashSprite.scale.setScalar(0); // initially hidden
-            gunGroup.add(muzzleFlashSprite);
+            // Muzzle flash sprite
+            const fc = document.createElement('canvas'); fc.width = fc.height = 64;
+            const fctx = fc.getContext('2d');
+            const g = fctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,200,0,0.8)'); g.addColorStop(1, 'rgba(255,0,0,0)');
+            fctx.fillStyle = g; fctx.fillRect(0, 0, 64, 64);
+            muzzleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(fc), transparent: true, blending: THREE.AdditiveBlending }));
+            muzzleFlash.position.set(0, 0, -0.42); muzzleFlash.scale.setScalar(0); gunGroup.add(muzzleFlash);
 
-            // Offset gun position from camera center
             gunGroup.position.set(0.12, -0.15, -0.4);
-            camera.add(gunGroup);
-            scene.add(camera);
+            camera.add(gunGroup); scene.add(camera);
         }
 
-        // ── Spawn Target Drone
-        function spawnTarget(name) {
-            const drone = new THREE.Group();
-            drone.name = name;
-            drone.health = 100;
+        function spawnDrone(name) {
+            const g = new THREE.Group(); g.name = name; g.health = 100;
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0xff4040, roughness: 0.3, emissive: 0xff4040, emissiveIntensity: 0.4 });
+            const core = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), coreMat);
+            g.add(core);
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.05, 8, 24), new THREE.MeshBasicMaterial({ color: 0xff4040, wireframe: true }));
+            ring.rotation.x = Math.PI / 2; g.add(ring);
+            resetDronePos(g);
 
-            // Core sphere
-            const sphereGeo = new THREE.SphereGeometry(0.6, 16, 16);
-            const coreMat = new THREE.MeshStandardMaterial({
-                color: 0xff4040,
-                roughness: 0.3,
-                emissive: 0xff4040,
-                emissiveIntensity: 0.4
-            });
-            const core = new THREE.Mesh(sphereGeo, coreMat);
-            drone.add(core);
-
-            // Neon glowing target ring
-            const ringGeo = new THREE.TorusGeometry(0.9, 0.05, 8, 24);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4040, wireframe: true });
-            const targetRing = new THREE.Mesh(ringGeo, ringMat);
-            targetRing.rotation.x = Math.PI / 2;
-            drone.add(targetRing);
-
-            // Position drone randomly in front of player
-            resetTargetPosition(drone);
-
-            // Take Damage logic
-            drone.takeDamage = function(damage, hitPoint) {
-                drone.health -= damage;
-                
-                // Spawn hit particles
-                spawnImpactParticles(hitPoint, 0xff4040);
-
-                if (drone.health <= 0) {
-                    // Explode
-                    spawnImpactParticles(drone.position, 0x00ff88, 30);
-                    resetTargetPosition(drone);
-                    drone.health = 100;
-                    return true; // killed
-                }
-                
-                // Visual feedback (flash core white briefly)
-                core.material.color.set(0xffffff);
-                core.material.emissive.set(0xffffff);
-                setTimeout(() => {
-                    core.material.color.set(0xff4040);
-                    core.material.emissive.set(0xff4040);
-                }, 100);
-                return false; // hit but alive
+            g.takeDamage = (dmg, pt) => {
+                g.health -= dmg; spawnParticles(pt, 0xff4040);
+                if (g.health <= 0) { spawnParticles(g.position.clone(), 0x00ff88, 30); resetDronePos(g); g.health = 100; return true; }
+                coreMat.color.set(0xffffff); coreMat.emissive.set(0xffffff);
+                setTimeout(() => { coreMat.color.set(0xff4040); coreMat.emissive.set(0xff4040); }, 100);
+                return false;
             };
-
-            scene.add(drone);
-            targets.push(drone);
+            scene.add(g); targets.push(g);
         }
 
-        function resetTargetPosition(drone) {
-            const distance = 15 + Math.random() * 20;
-            const angle = Math.random() * Math.PI * 2;
-            drone.position.set(
-                Math.cos(angle) * distance,
-                1.2 + Math.random() * 5,
-                Math.sin(angle) * distance
+        function resetDronePos(g) {
+            const d = 15 + Math.random() * 20, a = Math.random() * Math.PI * 2;
+            g.position.set(Math.cos(a) * d, 1.2 + Math.random() * 5, Math.sin(a) * d);
+        }
+
+        function laserBeam(from, to, hex) {
+            const ln = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([from, to]),
+                new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending })
             );
+            scene.add(ln); laserLines.push({ mesh: ln, life: 1.0 });
         }
 
-        // ── Laser projectile render beam
-        function createLaserBeam(origin, end, colorHex) {
-            const points = [origin, end];
-            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-            const lineMat = new THREE.LineBasicMaterial({
-                color: colorHex,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-            const line = new THREE.Line(lineGeo, lineMat);
-            scene.add(line);
-            
-            laserLines.push({
-                mesh: line,
-                life: 1.0 // fade out life
-            });
-        }
-
-        // ── Particle Explosion Effects
-        function spawnImpactParticles(position, color, count = 12) {
-            const pGeo = new THREE.SphereGeometry(0.05, 4, 4);
-            const pMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9 });
-
+        function spawnParticles(pos, color, count = 12) {
+            const geo = new THREE.SphereGeometry(0.05, 4, 4);
             for (let i = 0; i < count; i++) {
-                const particle = new THREE.Mesh(pGeo, pMat);
-                particle.position.copy(position);
-                
-                // Random velocities
-                particle.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 5,
-                    (Math.random() - 0.5) * 5 + 2,
-                    (Math.random() - 0.5) * 5
-                );
-                particle.life = 1.0;
-                scene.add(particle);
-                particles.push(particle);
+                const p = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+                p.position.copy(pos);
+                p.velocity = new THREE.Vector3((Math.random()-.5)*5, (Math.random()-.5)*5+2, (Math.random()-.5)*5);
+                p.life = 1.0; scene.add(p); particles.push(p);
             }
         }
 
-        // ── Game Loop (Rendering & Physics Updates)
-        let lastTime = performance.now();
-        let frameCount = 0;
-        let fpsTimer = 0;
+        // ─────────────────────────────────────────────────────────────────────
+        // RAPIER3D PHYSICS
+        // ─────────────────────────────────────────────────────────────────────
+        let rapierWorld, playerBody, playerCollider, charCtrl;
 
-        // Advanced movement/gyro variables
-        let currentTilt = 0;
-        let bobTimer = 0;
-        const currentVelocity = new THREE.Vector3();
+        function initPhysics() {
+            rapierWorld = new RAPIER.World({ x: 0, y: -20, z: 0 });
+
+            // Ground plane
+            rapierWorld.createCollider(
+                RAPIER.ColliderDesc.cuboid(50, 0.1, 50).setTranslation(0, -0.1, 0),
+                rapierWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+            );
+
+            // Pillar colliders (match Three.js scene exactly)
+            PILLAR_POSITIONS.forEach(([x, z]) => {
+                rapierWorld.createCollider(
+                    RAPIER.ColliderDesc.cuboid(1, 5, 1),
+                    rapierWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, 5, z))
+                );
+            });
+
+            // Arena boundary walls (invisible)
+            [
+                [50, 2, 0.5,  0, 2, -50],
+                [50, 2, 0.5,  0, 2,  50],
+                [0.5, 2, 50, -50, 2,  0],
+                [0.5, 2, 50,  50, 2,  0],
+            ].forEach(([hw, hh, hd, x, y, z]) => {
+                rapierWorld.createCollider(
+                    RAPIER.ColliderDesc.cuboid(hw, hh, hd).setTranslation(x, y, z),
+                    rapierWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+                );
+            });
+
+            // Player: kinematic position-based capsule (best for FPS character)
+            playerBody = rapierWorld.createRigidBody(
+                RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0.9, 0)
+            );
+            playerCollider = rapierWorld.createCollider(
+                RAPIER.ColliderDesc.capsule(0.45, 0.35),   // half-height=0.45, radius=0.35
+                playerBody
+            );
+
+            // Character controller — handles sliding along walls and slopes
+            charCtrl = rapierWorld.createCharacterController(0.01); // 1cm skin
+            charCtrl.enableSnapToGround(0.5);
+            charCtrl.setApplyImpulsesToDynamicBodies(true);
+            charCtrl.setSlideEnabled(true);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // GAME LOGIC (driven by Zustand store reads)
+        // ─────────────────────────────────────────────────────────────────────
+        function processInput(data) {
+            // Gyro → camera target
+            targetRot.x = THREE.MathUtils.degToRad(data.pitch || 0);
+            targetRot.y = THREE.MathUtils.degToRad(data.yaw  || 0);
+
+            const s = gameStore.getState();
+            const cfg = weaponConfig[s.weapon];
+            if (data.fire) {
+                if (cfg.auto) shoot();
+                else if (!lastFireState) shoot();
+            }
+            lastFireState = data.fire;
+            if (data.reload && !s.isReloading) doReload();
+            if (data.weaponSwipe !== 0) switchWeapon(data.weaponSwipe);
+        }
+
+        function shoot() {
+            const s   = gameStore.getState();
+            const cfg = weaponConfig[s.weapon];
+            if (s.isReloading) return;
+            if (s.ammo <= 0) { sounds.empty(); return; }
+            const now = performance.now();
+            if (now < nextFireTime) return;
+            nextFireTime = now + 1000 / cfg.fireRate;
+
+            gameStore.getState().setAmmo(s.ammo - 1);
+            sounds[cfg.sound]?.();
+            wsSend({ type: 'recoil', gun: s.weapon });
+
+            // Muzzle flash + recoil kick
+            muzzleFlash.scale.setScalar(0.4 + Math.random() * 0.2);
+            setTimeout(() => muzzleFlash.scale.setScalar(0), 50);
+            gunGroup.position.z = 0.2;
+
+            // Three.js Raycaster for hit detection
+            const raycaster = new THREE.Raycaster();
+            const pellets = cfg.pellets || 1;
+
+            for (let p = 0; p < pellets; p++) {
+                const spread = ((cfg.spread || 0) * Math.PI / 180);
+                const off = new THREE.Vector2((Math.random()-.5)*spread, (Math.random()-.5)*spread);
+                const origin = camera.position.clone().add(new THREE.Vector3(0.12, -0.15, -0.4).applyQuaternion(camera.quaternion));
+                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                if (off.length() > 0) dir.add(new THREE.Vector3(off.x, off.y, 0).applyQuaternion(camera.quaternion)).normalize();
+
+                raycaster.set(camera.position, dir);
+                const hits = raycaster.intersectObjects(targets.flatMap(t => t.children));
+                let hitPt = camera.position.clone().addScaledVector(dir, 50);
+
+                if (hits.length > 0) {
+                    hitPt.copy(hits[0].point);
+                    const drone = hits[0].object.parent;
+                    const killed = drone.takeDamage(cfg.damage, hitPt);
+                    if (killed) {
+                        gameStore.getState().addScore(100);
+                        showKillFeed(drone.name); sounds.explode();
+                        wsSend({ type: 'hit', enemyId: drone.name, isKill: true, score: gameStore.getState().score });
+                    } else {
+                        wsSend({ type: 'hit', enemyId: drone.name, isKill: false, score: gameStore.getState().score });
+                    }
+                }
+                laserBeam(origin, hitPt, cfg.color);
+            }
+
+            const ns = gameStore.getState();
+            if (ns.ammo <= 0) doReload();
+            wsSend({ type: 'ammo', weapon: ns.weapon, ammoCurrent: ns.ammo, ammoMax: ns.ammoMax, isReloading: ns.isReloading });
+        }
+
+        function doReload() {
+            const s = gameStore.getState();
+            if (s.isReloading || s.ammo === s.ammoMax) return;
+            gameStore.getState().setReloading(true);
+            sounds.reload();
+            wsSend({ type: 'ammo', weapon: s.weapon, ammoCurrent: s.ammo, ammoMax: s.ammoMax, isReloading: true });
+            setTimeout(() => {
+                const cfg = weaponConfig[gameStore.getState().weapon];
+                gameStore.setState({ ammo: cfg.maxAmmo, isReloading: false });
+                const ns = gameStore.getState();
+                wsSend({ type: 'ammo', weapon: ns.weapon, ammoCurrent: ns.ammo, ammoMax: ns.ammoMax, isReloading: false });
+            }, weaponConfig[s.weapon].reloadTime);
+        }
+
+        function switchWeapon(dir) {
+            const s = gameStore.getState();
+            if (s.isReloading) return;
+            weaponIndex = (weaponIndex + dir + weapons.length) % weapons.length;
+            const w = weapons[weaponIndex], cfg = weaponConfig[w];
+            gameStore.getState().setWeapon(w, cfg.maxAmmo, cfg.maxAmmo);
+            const mat = gunGroup.children[0].material;
+            mat.color.set(cfg.color); mat.emissive.set(cfg.color).multiplyScalar(0.2);
+            wsSend({ type: 'ammo', weapon: w, ammoCurrent: cfg.maxAmmo, ammoMax: cfg.maxAmmo, isReloading: false });
+        }
+
+        function showKillFeed(name) {
+            const msg = document.createElement('div');
+            msg.className = 'kill-msg';
+            msg.innerText = `☠ ${name.toUpperCase()} DOWN  +100`;
+            killFeed.appendChild(msg);
+            screenFlash.style.opacity = 1;
+            setTimeout(() => screenFlash.style.opacity = 0, 50);
+            setTimeout(() => { msg.style.opacity = 0; setTimeout(() => msg.remove(), 200); }, 2500);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MAIN LOOP — Rapier step + Three.js render
+        // ─────────────────────────────────────────────────────────────────────
+        let lastTime = performance.now(), frameCount = 0, fpsTimer = 0;
 
         function animate() {
             requestAnimationFrame(animate);
-
             const now = performance.now();
-            const dt = (now - lastTime) / 1000;
-            lastTime = now;
+            const dt  = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime  = now;
 
-            // Frame rate tracking
-            frameCount++;
-            fpsTimer += dt;
-            if (fpsTimer >= 1.0) {
-                fpsTxt.innerText = frameCount;
-                frameCount = 0;
-                fpsTimer = 0;
-            }
+            frameCount++; fpsTimer += dt;
+            if (fpsTimer >= 1.0) { gameStore.getState().setFps(frameCount); frameCount = 0; fpsTimer = 0; }
 
-            // 1. Interpolate / Smooth Camera Angles from Gyroscope Yaw/Pitch
-            // Slerping/Lerping provides low-latency feels and handles signal spikes
-            const lastPitch = currentRotation.x;
-            const lastYaw = currentRotation.y;
+            const s = gameStore.getState();
 
-            currentRotation.x = THREE.MathUtils.lerp(currentRotation.x, targetRotation.x, dt * 25);
-            currentRotation.y = THREE.MathUtils.lerp(currentRotation.y, targetRotation.y, dt * 25);
-            camera.quaternion.setFromEuler(currentRotation);
+            // ── 1. Gyro-driven camera (smooth lerp = Quaternion SLERP equivalent)
+            const lastPitch = currentRot.x, lastYaw = currentRot.y;
+            currentRot.x = THREE.MathUtils.lerp(currentRot.x, targetRot.x, dt * 25);
+            currentRot.y = THREE.MathUtils.lerp(currentRot.y, targetRot.y, dt * 25);
+            camera.quaternion.setFromEuler(currentRot);
 
-            // 2. Weapon Sway (Gun lags behind camera rotation slightly for inertia feedback)
-            const pitchSpeed = (currentRotation.x - lastPitch) / Math.max(0.001, dt);
-            const yawSpeed = (currentRotation.y - lastYaw) / Math.max(0.001, dt);
+            // ── 2. Weapon sway (gun lags behind camera = inertia feel)
+            const pitchSpd = (currentRot.x - lastPitch) / Math.max(0.001, dt);
+            const yawSpd   = (currentRot.y - lastYaw)   / Math.max(0.001, dt);
+            const swX = THREE.MathUtils.clamp(-yawSpd   * 0.015, -0.05, 0.05);
+            const swY = THREE.MathUtils.clamp( pitchSpd * 0.015, -0.05, 0.05);
+            gunGroup.position.x = THREE.MathUtils.lerp(gunGroup.position.x, 0.12 + swX, dt * 10);
+            gunGroup.position.y = THREE.MathUtils.lerp(gunGroup.position.y, -0.15 + swY, dt * 10);
+            gunGroup.rotation.y = THREE.MathUtils.lerp(gunGroup.rotation.y,  swX * 0.5, dt * 10);
+            gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, -swY * 0.5, dt * 10);
 
-            // Smooth out sway values
-            const targetSwayX = THREE.MathUtils.clamp(-yawSpeed * 0.015, -0.05, 0.05);
-            const targetSwayY = THREE.MathUtils.clamp(pitchSpeed * 0.015, -0.05, 0.05);
+            // ── 3. RAPIER character movement (joystick → physics → collision-resolved position)
+            const jx = s.joystick.x, jy = s.joystick.y;
+            const moving = jx * jx + jy * jy > 0.01;
+            const moveDir = new THREE.Vector3(jx, 0, -jy);
+            if (moving) moveDir.applyEuler(new THREE.Euler(0, currentRot.y, 0, 'YXZ')).normalize();
 
-            gunGroup.position.x = THREE.MathUtils.lerp(gunGroup.position.x, 0.12 + targetSwayX, dt * 10);
-            gunGroup.position.y = THREE.MathUtils.lerp(gunGroup.position.y, -0.15 + targetSwayY, dt * 10);
-            gunGroup.rotation.y = THREE.MathUtils.lerp(gunGroup.rotation.y, targetSwayX * 0.5, dt * 10);
-            gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, -targetSwayY * 0.5, dt * 10);
+            const maxSpd = 7.0;
+            const desired = {
+                x: moveDir.x * maxSpd * dt,
+                y: -0.5 * dt,           // constant downward (keeps player grounded via snap-to-ground)
+                z: moveDir.z * maxSpd * dt,
+            };
 
-            // 3. Player movement based on Mobile Joystick (with inertia & acceleration)
-            const moveDir = new THREE.Vector3(joystickInput.x, 0, -joystickInput.y);
-            const isMoving = moveDir.lengthSq() > 0.01;
+            // Let Rapier resolve collisions with pillars, walls, and floor
+            charCtrl.computeColliderMovement(playerCollider, desired, null, null);
+            const corrected = charCtrl.computedMovement();
+            const pos = playerBody.translation();
+            playerBody.setNextKinematicTranslation({
+                x: pos.x + corrected.x,
+                y: pos.y + corrected.y,
+                z: pos.z + corrected.z,
+            });
+            rapierWorld.step();
 
-            // Move relative to camera yaw rotation
-            const cameraYaw = new THREE.Euler(0, currentRotation.y, 0, 'YXZ');
-            moveDir.applyEuler(cameraYaw).normalize();
-            
-            const maxSpeed = 7.0; // max speed in units/sec
-            const targetVelocity = new THREE.Vector3().copy(moveDir).multiplyScalar(maxSpeed);
+            // ── 4. Sync Three.js camera to Rapier player body
+            const rp = playerBody.translation();
 
-            // Interpolate current velocity towards target velocity (inertia/friction)
-            const lerpFactor = isMoving ? 8.0 : 12.0; // faster deceleration than acceleration
-            currentVelocity.lerp(targetVelocity, dt * lerpFactor);
-            camera.position.addScaledVector(currentVelocity, dt);
-
-            // Keep player bounded in the arena
-            camera.position.x = Math.max(-45, Math.min(45, camera.position.x));
-            camera.position.z = Math.max(-45, Math.min(45, camera.position.z));
-
-            // 4. Head Bobbing & Strafing Camera Tilt
-            let bobHeight = 0;
-            let targetTilt = 0;
-
-            if (isMoving) {
-                // Head bob frequency depends on speed
-                const speedRatio = currentVelocity.length() / maxSpeed;
-                bobTimer += dt * 12 * speedRatio;
-                bobHeight = Math.sin(bobTimer) * 0.04 * speedRatio;
-
-                // Strafe tilt: tilt camera left when moving right, right when moving left
-                targetTilt = -joystickInput.x * 0.035; 
-            } else {
-                bobTimer = 0;
-                targetTilt = 0;
-            }
-
-            // Apply camera height bobbing
-            camera.position.y = 1.8 + bobHeight;
-
-            // Apply camera roll tilt smoothly
+            // Head bob & strafe tilt
+            let bob = 0, targetTilt = 0;
+            if (moving) {
+                const spd = Math.sqrt(desired.x**2 + desired.z**2) / (maxSpd * dt);
+                bobTimer += dt * 12 * spd;
+                bob = Math.sin(bobTimer) * 0.04 * spd;
+                targetTilt = -jx * 0.035;
+            } else { bobTimer = 0; }
             currentTilt = THREE.MathUtils.lerp(currentTilt, targetTilt, dt * 8);
             camera.rotation.z = currentTilt;
+            camera.position.set(rp.x, rp.y + 0.9 + bob, rp.z);
 
-            // 5. Animate Gun recoil model recovery (Z-axis kickback)
+            // ── 5. Gun recoil recovery
             gunGroup.position.z = THREE.MathUtils.lerp(gunGroup.position.z, -0.4, dt * 15);
 
-            // 6. Animate floating/hovering Target Drones
-            targets.forEach((drone, index) => {
-                drone.position.y += Math.sin(now * 0.002 + index) * 0.005;
-                drone.rotation.y += 0.01;
-            });
+            // ── 6. Drone hover animation
+            targets.forEach((d, i) => { d.position.y += Math.sin(now * 0.002 + i) * 0.005; d.rotation.y += 0.01; });
 
-            // 7. Update laser lines (fade and destroy)
+            // ── 7. Laser fade-out
             for (let i = laserLines.length - 1; i >= 0; i--) {
-                const line = laserLines[i];
-                line.life -= dt * 10;
-                line.mesh.material.opacity = line.life;
-                if (line.life <= 0) {
-                    scene.remove(line.mesh);
-                    line.mesh.geometry.dispose();
-                    line.mesh.material.dispose();
-                    laserLines.splice(i, 1);
-                }
+                const l = laserLines[i]; l.life -= dt * 10;
+                l.mesh.material.opacity = l.life;
+                if (l.life <= 0) { scene.remove(l.mesh); l.mesh.geometry.dispose(); l.mesh.material.dispose(); laserLines.splice(i, 1); }
             }
 
-            // 8. Update exploding particles
+            // ── 8. Particle physics (gravity-driven, Three.js only)
             for (let i = particles.length - 1; i >= 0; i--) {
                 const p = particles[i];
                 p.position.addScaledVector(p.velocity, dt);
-                p.velocity.y -= 9.8 * dt; // Gravity
-                p.life -= dt * 1.5;
-                p.material.opacity = p.life;
-
-                if (p.life <= 0) {
-                    scene.remove(p);
-                    p.geometry.dispose();
-                    p.material.dispose();
-                    particles.splice(i, 1);
-                }
+                p.velocity.y -= 9.8 * dt;
+                p.life -= dt * 1.5; p.material.opacity = p.life;
+                if (p.life <= 0) { scene.remove(p); p.geometry.dispose(); p.material.dispose(); particles.splice(i, 1); }
             }
 
             renderer.render(scene, camera);
         }
 
-        // Start WebGL and Sockets
-        init3D();
-        connectSocket();
-        animate();
+        // ─────────────────────────────────────────────────────────────────────
+        // BOOTSTRAP — wait for Rapier WASM, then start everything
+        // ─────────────────────────────────────────────────────────────────────
+        async function main() {
+            const bar = el('loading-bar'), txt = el('loading-text');
 
-        // Audio Activation overlay trigger
-        document.body.addEventListener('click', () => {
-            getAudioContext();
+            bar.style.width = '30%'; txt.innerText = 'LOADING RAPIER3D WASM...';
+            await RAPIER.init();
+            bar.style.width = '60%'; txt.innerText = 'BUILDING PHYSICS WORLD...';
+            initPhysics();
+
+            bar.style.width = '80%'; txt.innerText = 'INITIALIZING 3D SCENE...';
+            init3D();
+
+            bar.style.width = '95%'; txt.innerText = 'CONNECTING WEBSOCKET...';
+            connectSocket();
+
+            bar.style.width = '100%'; txt.innerText = 'READY';
+            setTimeout(() => { el('loading-overlay').style.display = 'none'; }, 400);
+
+            animate();
+            document.body.addEventListener('click', () => getAudio());
+        }
+
+        main().catch(err => {
+            el('loading-text').innerText = 'ERROR: ' + err.message;
+            console.error(err);
         });
     </script>
 </body>

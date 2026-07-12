@@ -5,682 +5,683 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GunSync Controller</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
         body {
-            background-color: #060a12;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
+            background-color: #060a12; color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; width: 100vw; height: 100vh;
         }
-        
-        /* Orientation Lock Request Overlay */
+
+        /* ── Orientation / Permission overlay ── */
         #orientation-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #0a0e1a;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            text-align: center;
-            padding: 20px;
+            position: fixed; inset: 0; background: #0a0e1a;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100; text-align: center; padding: 20px;
         }
-        .icon {
-            font-size: 64px;
+        .icon { font-size: 64px; margin-bottom: 20px; animation: rotate 2s infinite ease-in-out; }
+        @keyframes rotate { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(-90deg); } }
+        .overlay-title { font-size: 22px; font-weight: 900; letter-spacing: 2px; margin-bottom: 10px; }
+        .overlay-sub { color: #666880; font-size: 13px; line-height: 1.6; max-width: 300px; margin-bottom: 24px; }
+        .sensor-badge {
+            display: inline-block; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
+            border-radius: 4px; padding: 4px 12px; font-size: 10px; letter-spacing: 2px; color: #00ff88;
             margin-bottom: 20px;
-            animation: rotate 2s infinite ease-in-out;
-        }
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            50% { transform: rotate(-90deg); }
-            100% { transform: rotate(-90deg); }
         }
         .btn-ready {
-            background: #ff4040;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            margin-top: 30px;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 64, 64, 0.4);
+            background: linear-gradient(135deg, #ff4040, #8b0000); color: white;
+            border: none; padding: 15px 40px; font-size: 16px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; box-shadow: 0 0 20px rgba(255,64,64,0.4);
+            letter-spacing: 2px;
         }
 
-        /* Game Screen Layout (Landscape) */
+        /* ── Game screen (landscape) ── */
         #controller-ui {
-            display: none;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
+            display: none; width: 100vw; height: 100vh; position: relative;
             background: radial-gradient(circle at center, #101626 0%, #060a12 100%);
         }
-        
-        /* Grid Overlay background */
         #grid {
-            position: absolute;
-            width: 100%;
-            height: 100%;
+            position: absolute; width: 100%; height: 100%;
             background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
                               linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
+            background-size: 40px 40px; pointer-events: none;
         }
 
-        /* Top HUD */
+        /* ── Top HUD bar ── */
         .hud-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 40px;
-            padding: 5px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(10, 14, 26, 0.5);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 40px;
+            padding: 5px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(10,14,26,0.7); border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 10;
         }
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ff4040;
-            display: inline-block;
-            margin-right: 6px;
-        }
-        .status-dot.online {
-            background: #00ff88;
-            box-shadow: 0 0 8px #00ff88;
-        }
-        .status-text {
-            font-size: 11px;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff4040; display: inline-block; margin-right: 6px; transition: all 0.3s; }
+        .status-dot.online { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .status-text { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+        #sensor-mode-badge { font-size: 9px; letter-spacing: 1px; color: rgba(0,255,136,0.4); }
+        #btn-calibrate {
+            background: #141824; border: 1px solid #2a2f45; color: #888da7;
+            padding: 6px 14px; font-size: 10px; font-weight: bold; letter-spacing: 1.5px;
+            border-radius: 6px; cursor: pointer; pointer-events: auto;
         }
 
-        /* Left Side: Joystick */
+        /* ── Left: Joystick ── */
         .left-zone {
-            position: absolute;
-            left: 0;
-            bottom: 0;
-            width: 45%;
-            height: calc(100% - 40px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: absolute; left: 0; bottom: 0; width: 45%; height: calc(100% - 40px);
+            display: flex; justify-content: center; align-items: center;
         }
         #joystick-container {
-            width: 140px;
-            height: 140px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            position: relative;
-            touch-action: none;
+            width: 140px; height: 140px;
+            background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50%; position: relative; touch-action: none;
         }
         #joystick-handle {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1.5px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            position: absolute;
-            left: 45px;
-            top: 45px;
-            pointer-events: none;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+            width: 50px; height: 50px;
+            background: radial-gradient(circle, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+            border: 1.5px solid rgba(255,255,255,0.5); border-radius: 50%;
+            position: absolute; left: 45px; top: 45px; pointer-events: none;
+            box-shadow: 0 0 12px rgba(255,255,255,0.1); transition: box-shadow 0.1s;
         }
 
-        /* Center Side: Weapon Display & Feedbacks */
+        /* ── Center: HUD info ── */
         .center-zone {
-            position: absolute;
-            left: 45%;
-            width: 10%;
-            height: calc(100% - 40px);
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            align-items: center;
-            padding: 20px 0;
-            pointer-events: none;
+            position: absolute; left: 45%; width: 10%; height: calc(100% - 40px); bottom: 0;
+            display: flex; flex-direction: column; justify-content: space-around;
+            align-items: center; padding: 20px 0; pointer-events: none;
         }
-        .weapon-hud {
-            text-align: center;
-        }
-        .weapon-icon {
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-        .weapon-name {
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: #ffaa00;
-        }
-        .ammo-counter {
-            font-size: 20px;
-            font-weight: 900;
-            margin-top: 5px;
-        }
-        .score-hud {
-            text-align: center;
-        }
-        .score-val {
-            font-size: 22px;
-            font-weight: 900;
-        }
-        .hud-label {
-            font-size: 8px;
-            color: #444860;
-            letter-spacing: 1.5px;
-        }
-        .gesture-hint {
-            font-size: 8px;
-            color: rgba(255,255,255,0.15);
-            text-align: center;
-            line-height: 1.4;
-        }
+        .weapon-hud { text-align: center; }
+        .weapon-icon { font-size: 32px; margin-bottom: 4px; transition: transform 0.15s; }
+        .weapon-name { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #ffaa00; }
+        .ammo-counter { font-size: 20px; font-weight: 900; margin-top: 4px; }
+        .score-hud { text-align: center; }
+        .score-val { font-size: 22px; font-weight: 900; }
+        .hud-label { font-size: 8px; color: #444860; letter-spacing: 1.5px; }
+        .gesture-hint { font-size: 8px; color: rgba(255,255,255,0.12); text-align: center; line-height: 1.6; }
 
-        /* Right Side: Action Panel */
+        /* ── Right: Fire button ── */
         .right-zone {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 45%;
-            height: calc(100% - 40px);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            align-items: center;
+            position: absolute; right: 0; bottom: 0; width: 45%; height: calc(100% - 40px);
+            display: flex; flex-direction: column; justify-content: space-around; align-items: center;
         }
         #btn-fire {
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
+            width: 120px; height: 120px; border-radius: 50%;
             background: radial-gradient(circle, #ff4040 0%, #8b0000 100%);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 25px rgba(255, 64, 64, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: 900;
-            font-size: 16px;
-            letter-spacing: 2px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            touch-action: none;
-            transition: transform 0.05s ease;
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 30px rgba(255,64,64,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+            font-weight: 900; font-size: 16px; letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6); touch-action: none;
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
         }
-        #btn-fire:active {
-            transform: scale(0.9);
-        }
-        #btn-calibrate {
-            background: #141824;
-            border: 1px solid #2a2f45;
-            color: #888da7;
-            padding: 8px 16px;
-            font-size: 10px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-            border-radius: 6px;
-            cursor: pointer;
-            pointer-events: auto;
+        #btn-fire:active, #btn-fire.pressed {
+            transform: scale(0.88);
+            box-shadow: 0 0 15px rgba(255,64,64,0.3), inset 0 0 30px rgba(0,0,0,0.5);
         }
 
-        /* Screen Hit Flash Overlay */
+        /* ── Effects overlays ── */
         #hit-flash {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(255, 64, 64, 0.3);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 5;
-            transition: opacity 0.1s ease;
+            position: fixed; inset: 0; background: rgba(255,64,64,0.3);
+            opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.1s ease;
         }
-
-        /* Kill feed banner */
         #kill-banner {
-            position: absolute;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 255, 136, 0.15);
-            border: 1.5px solid #00ff88;
-            border-radius: 8px;
-            padding: 8px 24px;
-            font-weight: 900;
-            font-size: 14px;
-            letter-spacing: 2px;
-            color: #00ff88;
-            z-index: 20;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
+            position: absolute; top: 55px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,255,136,0.15); border: 1.5px solid #00ff88;
+            border-radius: 8px; padding: 8px 24px; font-weight: 900; font-size: 14px;
+            letter-spacing: 2px; color: #00ff88; z-index: 20; opacity: 0;
+            transition: opacity 0.2s ease; pointer-events: none;
         }
+        #recoil-ripple {
+            position: fixed; inset: 0; pointer-events: none; z-index: 4;
+            border: 3px solid rgba(255, 200, 0, 0); border-radius: 0;
+            transition: none;
+        }
+        @keyframes ripple-out { 0% { border-color: rgba(255,200,0,0.6); border-radius: 0; transform: scale(1); opacity: 1; } 100% { border-color: rgba(255,200,0,0); transform: scale(1.05); opacity: 0; } }
+        .ripple-anim { animation: ripple-out 0.2s ease-out forwards; }
     </style>
 </head>
 <body>
-    <!-- Step 1: Orientation Lock & Permission Screen -->
-    <div id="orientation-overlay">
-        <div class="icon">📱</div>
-        <h2>Rotate Phone to Landscape</h2>
-        <p style="color: #666880; font-size: 13px; margin: 10px 0 20px 0; max-width: 300px;">
-            Please rotate your phone horizontally and grant sensor access to begin wireless motion aiming.
-        </p>
-        <button class="btn-ready" id="btn-request">I'M READY</button>
-    </div>
 
-    <!-- Step 2: Main Controller Dashboard -->
-    <div id="controller-ui">
-        <div id="grid"></div>
-        <div id="hit-flash"></div>
-        <div id="kill-banner">SKILL KILL +100</div>
+<!-- Step 1: Permission & Orientation Screen -->
+<div id="orientation-overlay">
+    <div class="icon">📱</div>
+    <div class="overlay-title">GUNSYNC CONTROLLER</div>
+    <p class="overlay-sub">Rotate your phone to landscape and tap Ready. This grants gyroscope, accelerometer, and sensor access for motion aiming.</p>
+    <div class="sensor-badge">W3C GENERIC SENSOR API + WEBSOCKET</div>
+    <button class="btn-ready" id="btn-request">I'M READY — GRANT ACCESS</button>
+</div>
 
-        <!-- HUD -->
-        <div class="hud-bar">
+<!-- Step 2: Main Controller UI -->
+<div id="controller-ui">
+    <div id="grid"></div>
+    <div id="hit-flash"></div>
+    <div id="recoil-ripple"></div>
+    <div id="kill-banner">SKILL KILL +100</div>
+
+    <!-- HUD -->
+    <div class="hud-bar">
+        <div style="display:flex;align-items:center;gap:12px;">
             <div>
                 <span class="status-dot" id="server-status"></span>
-                <span class="status-text" id="status-desc">CONNECTING TO PC...</span>
+                <span class="status-text" id="status-desc">CONNECTING...</span>
             </div>
-            <div id="btn-calibrate">⊕ CALIBRATE AIM</div>
+            <span id="sensor-mode-badge">SENSOR: —</span>
         </div>
+        <div id="btn-calibrate">⊕ CALIBRATE AIM</div>
+    </div>
 
-        <!-- Left Joystick Zone -->
-        <div class="left-zone">
-            <div id="joystick-container">
-                <div id="joystick-handle"></div>
-            </div>
-        </div>
-
-        <!-- Center HUD -->
-        <div class="center-zone">
-            <div class="score-hud">
-                <div class="score-val" id="score-val">0</div>
-                <div class="hud-label">SCORE</div>
-            </div>
-
-            <div class="weapon-hud">
-                <div class="weapon-icon" id="weapon-icon">🔫</div>
-                <div class="weapon-name" id="weapon-name">PISTOL</div>
-                <div class="ammo-counter" id="ammo-val">12/12</div>
-            </div>
-
-            <div class="gesture-hint">
-                &larr; SWIPE Weapon &rarr;<br>
-                Jerk Phone Forward to Shoot<br>
-                Shake Phone ↓ to Reload
-            </div>
-        </div>
-
-        <!-- Right Fire Zone -->
-        <div class="right-zone">
-            <div id="btn-fire">FIRE</div>
+    <!-- Left Joystick -->
+    <div class="left-zone">
+        <div id="joystick-container">
+            <div id="joystick-handle"></div>
         </div>
     </div>
 
-    <script>
-        // WebSocket setup
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/phone`;
-        let socket = null;
+    <!-- Center HUD -->
+    <div class="center-zone">
+        <div class="score-hud">
+            <div class="score-val" id="score-val">0</div>
+            <div class="hud-label">SCORE</div>
+        </div>
+        <div class="weapon-hud">
+            <div class="weapon-icon" id="weapon-icon">🔫</div>
+            <div class="weapon-name" id="weapon-name">PISTOL</div>
+            <div class="ammo-counter" id="ammo-val">12/12</div>
+        </div>
+        <div class="gesture-hint">
+            ← SWIPE Weapon →<br>
+            Jerk Forward to Shoot<br>
+            Shake ↓ to Reload
+        </div>
+    </div>
 
-        // HUD Elements
-        const overlay = document.getElementById('orientation-overlay');
-        const ui = document.getElementById('controller-ui');
-        const statusDot = document.getElementById('server-status');
-        const statusDesc = document.getElementById('status-desc');
-        const weaponIcon = document.getElementById('weapon-icon');
-        const weaponName = document.getElementById('weapon-name');
-        const ammoVal = document.getElementById('ammo-val');
-        const scoreVal = document.getElementById('score-val');
-        const hitFlash = document.getElementById('hit-flash');
-        const killBanner = document.getElementById('kill-banner');
+    <!-- Right Fire Zone -->
+    <div class="right-zone">
+        <div id="btn-fire">FIRE</div>
+    </div>
+</div>
 
-        // Gun metadata
-        const weaponIcons = { pistol: '🔫', smg: '⚡', shotgun: '💥', sniper: '🎯' };
-        const weaponColors = { pistol: '#ffaa00', smg: '#00aaff', shotgun: '#ff4040', sniper: '#00ff88' };
+<!-- ── Import Map ── -->
+<script type="importmap">
+{
+    "imports": {
+        "zustand/vanilla": "https://cdn.jsdelivr.net/npm/zustand@5/vanilla/+esm"
+    }
+}
+</script>
 
-        // Controller State variables
-        let sensorActive = false;
-        let calibrating = false;
-        let basePitch = 0;
-        let baseYaw = 0;
-        let baseRoll = 0;
+<script type="module">
+    import { createStore } from 'zustand/vanilla';
 
-        let pitch = 0;
-        let yaw = 0;
-        let roll = 0;
+    // ─────────────────────────────────────────────────────────────────────
+    // ZUSTAND CONTROLLER STATE STORE
+    // ─────────────────────────────────────────────────────────────────────
+    const store = createStore((set, get) => ({
+        // Network state
+        connected: false,
+        gameReady: false,
 
-        let joystickX = 0;
-        let joystickY = 0;
-        let fire = false;
-        let reload = false;
-        let weaponSwipe = 0;
+        // Calibration offsets
+        basePitch: 0, baseYaw: 0, baseRoll: 0,
 
-        // Joystick Logic variables
-        const jContainer = document.getElementById('joystick-container');
-        const jHandle = document.getElementById('joystick-handle');
-        let jTouchId = null;
-        let jCenterX = 0;
-        let jCenterY = 0;
-        const jMaxDist = 45; // Max drag radius
+        // Live sensor output (relative to calibration baseline)
+        pitch: 0, yaw: 0, roll: 0,
 
-        // Device Motion variables for reload detection
-        let lastAccelY = 0;
-        let reloadCooldown = false;
+        // Active controller inputs
+        joystickX: 0, joystickY: 0,
+        fire: false, reload: false, weaponSwipe: 0,
 
-        // Weapon swipe gesture detection variables
-        let touchStartX = 0;
-        let touchStartTime = 0;
+        // Game state mirror (updated from server events)
+        score: 0, ammo: 12, ammoMax: 12,
+        weapon: 'pistol', isReloading: false,
 
-        // Send Input loop
-        let inputInterval = null;
+        // Sensor mode indicator
+        sensorMode: 'INITIALIZING',
 
-        // ── Start connection
-        function connectSocket() {
-            statusDesc.innerText = 'Connecting...';
-            socket = new WebSocket(wsUrl);
-            
-            socket.onopen = () => {
-                statusDot.classList.add('online');
-                statusDesc.innerText = 'ONLINE (PC Connected)';
-                startLoop();
-            };
+        // ── Actions ──────────────────────────────────────────────────────
+        setConnected: (v, gameReady = false) => set({ connected: v, gameReady }),
+        setGameReady: (v) => set({ gameReady: v }),
+        setSensorMode: (m) => set({ sensorMode: m }),
 
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'recoil') {
-                        triggerRecoil(data);
-                    } else if (data.type === 'hit') {
-                        triggerHit(data);
-                    } else if (data.type === 'ammo') {
-                        updateAmmo(data);
-                    } else if (data.type === 'status') {
-                        statusDesc.innerText = data.gameConnected ? 'LIVE (Game Ready)' : 'WAITING FOR GAME...';
-                    }
-                } catch (e) {
-                    console.log('WS msg err:', e);
-                }
-            };
+        /** Calibrate: current raw reading becomes the new zero. */
+        calibrate: () => {
+            const s = get();
+            let newBaseYaw = s.baseYaw + s.yaw;
+            if (newBaseYaw > 180) newBaseYaw -= 360;
+            if (newBaseYaw < -180) newBaseYaw += 360;
+            set({ basePitch: s.basePitch + s.pitch, baseYaw: newBaseYaw, baseRoll: s.baseRoll + s.roll, pitch: 0, yaw: 0, roll: 0 });
+        },
 
-            socket.onclose = () => {
-                statusDot.classList.remove('online');
-                statusDesc.innerText = 'OFFLINE — RECONNECTING...';
-                stopLoop();
-                setTimeout(connectSocket, 2000);
-            };
-        }
-
-        // ── Loop sending inputs
-        function startLoop() {
-            if (inputInterval) clearInterval(inputInterval);
-            inputInterval = setInterval(() => {
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'input',
-                        pitch: parseFloat(pitch.toFixed(2)),
-                        yaw: parseFloat(yaw.toFixed(2)),
-                        roll: parseFloat(roll.toFixed(2)),
-                        fire: fire,
-                        reload: reload,
-                        joystickX: parseFloat(joystickX.toFixed(2)),
-                        joystickY: parseFloat(joystickY.toFixed(2)),
-                        weaponSwipe: weaponSwipe,
-                        timestamp: Date.now()
-                    }));
-                    // Reset single frame triggers
-                    reload = false;
-                    weaponSwipe = 0;
-                }
-            }, 16); // ~60Hz
-        }
-
-        function stopLoop() {
-            if (inputInterval) clearInterval(inputInterval);
-        }
-
-        // ── Handle Recoil Vibe
-        function triggerRecoil(data) {
-            // Vibe patterns matching weapon characteristics
-            let pattern = [120];
-            if (data.gun === 'smg') pattern = [60, 40, 60, 40, 60];
-            else if (data.gun === 'shotgun') pattern = [220];
-            else if (data.gun === 'sniper') pattern = [0, 50, 20, 280];
-
-            if (navigator.vibrate) {
-                navigator.vibrate(pattern);
-            }
-        }
-
-        // ── Handle Enemy Down flash & text
-        function triggerHit(data) {
-            if (data.isKill) {
-                killBanner.style.opacity = 1;
-                setTimeout(() => killBanner.style.opacity = 0, 1500);
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Quick double pulse
-            } else {
-                hitFlash.style.opacity = 1;
-                setTimeout(() => hitFlash.style.opacity = 0, 100);
-            }
-            scoreVal.innerText = data.score;
-        }
-
-        // ── Sync Ammo & Weapon changes
-        function updateAmmo(data) {
-            weaponIcon.innerText = weaponIcons[data.weapon] || '🔫';
-            weaponName.innerText = data.weapon.toUpperCase();
-            weaponName.style.color = weaponColors[data.weapon] || '#ffaa00';
-            
-            if (data.isReloading) {
-                ammoVal.innerText = 'RELOADING...';
-            } else {
-                ammoVal.innerText = `${data.ammoCurrent}/${data.ammoMax}`;
-            }
-        }
-
-        // ── Calibrate Aim offsets
-        document.getElementById('btn-calibrate').addEventListener('click', () => {
-            calibrating = true;
-            setTimeout(() => {
-                calibrating = false;
-            }, 100);
-        });
-
-        // ── Setup Gestures & Device Rotation Sensors
-        function initSensors() {
-            // Check if permission is needed on iOS (not needed for Android, but good practice)
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation);
-                            window.addEventListener('devicemotion', handleMotion);
-                        } else {
-                            alert('Sensors permission required for GunSync FPS.');
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                window.addEventListener('devicemotion', handleMotion);
-            }
-        }
-
-        // ── Orientation Logic (Aiming)
-        // Integrates DeviceOrientation angles (alpha, beta, gamma)
-        function handleOrientation(event) {
-            let currentPitch = event.beta;
-            let currentYaw = event.alpha;
-            let currentRoll = event.gamma;
-
-            // In landscape mode:
-            // Beta controls rotation around phone longitudinal axis
-            // Alpha controls compass/rotation around phone normal axis
-            if (calibrating) {
-                basePitch = currentPitch;
-                baseYaw = currentYaw;
-                baseRoll = currentRoll;
-                return;
-            }
-
-            pitch = currentPitch - basePitch;
-            yaw = currentYaw - baseYaw;
-            roll = currentRoll - baseRoll;
-
-            // Normalize yaw angle to [-180, 180]
-            if (yaw > 180) yaw -= 360;
+        /** Apply raw sensor reading, subtract calibration baseline, store normalized delta. */
+        setRawGyro: (rawPitch, rawYaw, rawRoll) => {
+            const s = get();
+            let yaw = rawYaw - s.baseYaw;
+            if (yaw > 180)  yaw -= 360;
             if (yaw < -180) yaw += 360;
+            set({ pitch: rawPitch - s.basePitch, yaw, roll: rawRoll - s.baseRoll });
+        },
+
+        setJoystick:   (x, y) => set({ joystickX: x, joystickY: y }),
+        setFire:       (v)    => set({ fire: v }),
+        triggerReload: ()     => set({ reload: true }),
+        clearReload:   ()     => set({ reload: false }),
+        setWeaponSwipe:(v)    => set({ weaponSwipe: v }),
+        clearSwipe:    ()     => set({ weaponSwipe: 0 }),
+
+        /** Update game state mirror from incoming server message. */
+        applyServerEvent: (data) => {
+            if (data.type === 'ammo') set({ ammo: data.ammoCurrent, ammoMax: data.ammoMax, weapon: data.weapon, isReloading: data.isReloading });
+            if (data.type === 'hit') set({ score: data.score ?? get().score });
+            if (data.type === 'status') set({ gameReady: !!data.gameConnected });
+        },
+    }));
+
+    // ─────────────────────────────────────────────────────────────────────
+    // REACTIVE HUD — Zustand subscriptions drive all DOM updates
+    // ─────────────────────────────────────────────────────────────────────
+    const el = (id) => document.getElementById(id);
+    const statusDot   = el('server-status');
+    const statusDesc  = el('status-desc');
+    const sensorBadge = el('sensor-mode-badge');
+    const weaponIcon  = el('weapon-icon');
+    const weaponName  = el('weapon-name');
+    const ammoVal     = el('ammo-val');
+    const scoreVal    = el('score-val');
+    const hitFlash    = el('hit-flash');
+    const killBanner  = el('kill-banner');
+    const ripple      = el('recoil-ripple');
+
+    const weaponIcons  = { pistol: '🔫', smg: '⚡', shotgun: '💥', sniper: '🎯' };
+    const weaponColors = { pistol: '#ffaa00', smg: '#00aaff', shotgun: '#ff4040', sniper: '#00ff88' };
+
+    store.subscribe((s, prev) => {
+        // Connection badge
+        if (s.connected !== prev.connected) {
+            statusDot.classList.toggle('online', s.connected);
+            statusDesc.innerText = s.connected
+                ? (s.gameReady ? 'LIVE (Game Ready)' : 'ONLINE — Waiting for game...')
+                : 'OFFLINE — RECONNECTING...';
+        }
+        if (s.gameReady !== prev.gameReady && s.connected) {
+            statusDesc.innerText = s.gameReady ? 'LIVE (Game Ready)' : 'ONLINE — Waiting for game...';
         }
 
-        // ── Accelerometer logic (Shake to shoot & Shake to reload)
-        let shootCooldown = false;
+        // Sensor mode
+        if (s.sensorMode !== prev.sensorMode) sensorBadge.innerText = `SENSOR: ${s.sensorMode}`;
 
-        function handleMotion(event) {
-            const acc = event.acceleration;
-            if (!acc) return;
+        // Score
+        if (s.score !== prev.score) {
+            scoreVal.innerText = s.score;
+        }
 
-            // 1. Shake to Shoot (Sharp forward/backward thrust or sideways flick)
-            const accelMagnitudeX = Math.abs(acc.x);
-            const accelMagnitudeZ = Math.abs(acc.z);
+        // Weapon / ammo
+        if (s.weapon !== prev.weapon || s.ammo !== prev.ammo || s.isReloading !== prev.isReloading) {
+            weaponIcon.innerText         = weaponIcons[s.weapon]  || '🔫';
+            weaponName.innerText         = s.weapon.toUpperCase();
+            weaponName.style.color       = weaponColors[s.weapon] || '#ffaa00';
+            ammoVal.innerText = s.isReloading ? 'RELOADING...' : `${s.ammo}/${s.ammoMax}`;
+            ammoVal.style.color = s.isReloading ? '#ffaa00' : (s.ammo < 3 ? '#ff4040' : '#ffffff');
+        }
+    });
 
-            if ((accelMagnitudeX > 22 || accelMagnitudeZ > 22) && !shootCooldown && !reloadCooldown) {
-                fire = true;
-                shootCooldown = true;
+    // ─────────────────────────────────────────────────────────────────────
+    // W3C WEBSOCKET (native browser WebSocket API)
+    // ─────────────────────────────────────────────────────────────────────
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl   = `${wsProto}//${location.host}/ws/phone`;
+    let socket = null, sendInterval = null;
 
-                // Reset fire flag after one input frame to simulate tap
-                setTimeout(() => {
-                    fire = false;
-                }, 30);
+    function connectSocket() {
+        statusDesc.innerText = 'CONNECTING...';
+        socket = new WebSocket(wsUrl);
 
-                // Small cooldown to prevent double firing on a single physical shake
-                setTimeout(() => {
-                    shootCooldown = false;
-                }, 200);
-                return;
-            }
+        socket.onopen = () => {
+            store.getState().setConnected(true, false);
+            startSendLoop();
+        };
 
-            // 2. Shake to Reload (Sharp vertical downward flick)
-            if (acc.y < -22 && !reloadCooldown) {
-                reload = true;
-                reloadCooldown = true;
-                // Vibe briefly to confirm reload gesture
-                if (navigator.vibrate) navigator.vibrate(60);
-                setTimeout(() => { reloadCooldown = false; }, 2000);
+        socket.onclose = () => {
+            store.getState().setConnected(false);
+            stopSendLoop();
+            setTimeout(connectSocket, 2000);
+        };
+
+        socket.onerror = () => socket.close();
+
+        socket.onmessage = (ev) => {
+            try {
+                const d = JSON.parse(ev.data);
+                store.getState().applyServerEvent(d);
+
+                if (d.type === 'recoil') triggerRecoilFeedback(d);
+                if (d.type === 'hit') triggerHitFeedback(d);
+            } catch(_) {}
+        };
+    }
+
+    /** 60Hz input loop — reads store state once per tick, sends JSON packet. */
+    function startSendLoop() {
+        stopSendLoop();
+        sendInterval = setInterval(() => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+            const s = store.getState();
+            socket.send(JSON.stringify({
+                type:        'input',
+                pitch:       +s.pitch.toFixed(2),
+                yaw:         +s.yaw.toFixed(2),
+                roll:        +s.roll.toFixed(2),
+                fire:        s.fire,
+                reload:      s.reload,
+                joystickX:   +s.joystickX.toFixed(2),
+                joystickY:   +s.joystickY.toFixed(2),
+                weaponSwipe: s.weaponSwipe,
+                timestamp:   Date.now(),
+            }));
+            // Clear single-frame triggers
+            store.getState().clearReload();
+            store.getState().clearSwipe();
+        }, 16); // ~60Hz
+    }
+
+    function stopSendLoop() {
+        if (sendInterval) { clearInterval(sendInterval); sendInterval = null; }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HAPTIC FEEDBACK (navigator.vibrate — W3C Vibration API)
+    // ─────────────────────────────────────────────────────────────────────
+    const recoilPatterns = {
+        pistol:  [120],
+        smg:     [60, 40, 60, 40, 60],
+        shotgun: [220],
+        sniper:  [0, 50, 20, 280],
+    };
+
+    function triggerRecoilFeedback(data) {
+        const pattern = recoilPatterns[data.gun] || [100];
+        if (navigator.vibrate) navigator.vibrate(pattern);
+
+        // Visual ripple effect on screen edge
+        ripple.classList.remove('ripple-anim');
+        void ripple.offsetWidth; // force reflow to restart animation
+        ripple.classList.add('ripple-anim');
+    }
+
+    function triggerHitFeedback(data) {
+        if (data.isKill) {
+            killBanner.style.opacity = 1;
+            setTimeout(() => killBanner.style.opacity = 0, 1800);
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } else {
+            hitFlash.style.opacity = 1;
+            setTimeout(() => hitFlash.style.opacity = 0, 100);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // W3C GENERIC SENSOR API (Primary) + DeviceOrientation fallback
+    // Spec: https://www.w3.org/TR/generic-sensor/
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Convert quaternion (from AbsoluteOrientationSensor) to Euler angles.
+     * Returns {pitch, yaw, roll} in degrees, matching DeviceOrientation convention:
+     *   pitch = beta (tilt forward/back), yaw = alpha (compass), roll = gamma (tilt left/right)
+     */
+    function quatToEuler(qx, qy, qz, qw) {
+        // Roll (x-axis)
+        const sinr = 2 * (qw * qx + qy * qz);
+        const cosr = 1 - 2 * (qx * qx + qy * qy);
+        const roll  = Math.atan2(sinr, cosr) * 180 / Math.PI;
+
+        // Pitch (y-axis)
+        const sinp = 2 * (qw * qy - qz * qx);
+        const pitch = Math.abs(sinp) >= 1
+            ? Math.sign(sinp) * 90
+            : Math.asin(sinp) * 180 / Math.PI;
+
+        // Yaw (z-axis / compass)
+        const siny = 2 * (qw * qz + qx * qy);
+        const cosy = 1 - 2 * (qy * qy + qz * qz);
+        const yaw   = Math.atan2(siny, cosy) * 180 / Math.PI;
+
+        return { pitch, yaw, roll };
+    }
+
+    let orientationSensor     = null;
+    let accelerationSensor    = null;
+    let shootCooldown = false, reloadCooldown = false;
+
+    async function initW3CSensors() {
+        // ── Try W3C Generic Sensor API ────────────────────────────────────
+        const hasAbsOrientation = 'AbsoluteOrientationSensor' in window;
+        const hasLinearAccel    = 'LinearAccelerationSensor' in window;
+
+        // Request Permissions API for sensors (required on some browsers)
+        if ('permissions' in navigator) {
+            try {
+                await Promise.all([
+                    navigator.permissions.query({ name: 'accelerometer' }),
+                    navigator.permissions.query({ name: 'gyroscope' }),
+                    navigator.permissions.query({ name: 'magnetometer' }),
+                ]);
+            } catch(_) { /* Permissions API may not support sensor names everywhere */ }
+        }
+
+        let w3cOrientationOk = false;
+        let w3cAccelOk       = false;
+
+        // ── AbsoluteOrientationSensor → pitch/yaw/roll ────────────────────
+        if (hasAbsOrientation) {
+            try {
+                orientationSensor = new AbsoluteOrientationSensor({ frequency: 60, referenceFrame: 'device' });
+                orientationSensor.addEventListener('error', (e) => {
+                    console.warn('AbsoluteOrientationSensor error:', e.error.name);
+                    // Fall back to DeviceOrientationEvent
+                    initFallbackOrientation();
+                });
+                orientationSensor.addEventListener('reading', () => {
+                    const q = orientationSensor.quaternion; // [x, y, z, w]
+                    const { pitch, yaw, roll } = quatToEuler(q[0], q[1], q[2], q[3]);
+                    store.getState().setRawGyro(pitch, yaw, roll);
+                });
+                orientationSensor.start();
+                w3cOrientationOk = true;
+                store.getState().setSensorMode('W3C AbsOrientation');
+            } catch(e) {
+                console.warn('AbsoluteOrientationSensor unavailable:', e);
             }
         }
 
-        // ── Touch Panel Swipe for weapon switching
-        document.body.addEventListener('touchstart', (e) => {
-            if (e.target.id === 'btn-fire' || e.target.id === 'joystick-container') return;
-            touchStartX = e.touches[0].clientX;
-            touchStartTime = Date.now();
-        }, { passive: true });
+        if (!w3cOrientationOk) initFallbackOrientation();
 
-        document.body.addEventListener('touchend', (e) => {
-            if (e.target.id === 'btn-fire' || e.target.id === 'joystick-container') return;
-            const diffX = e.changedTouches[0].clientX - touchStartX;
-            const diffTime = Date.now() - touchStartTime;
-
-            if (diffTime < 250 && Math.abs(diffX) > 60) {
-                // Swipe right = next weapon (1), Swipe left = previous weapon (-1)
-                weaponSwipe = diffX > 0 ? 1 : -1;
-                if (navigator.vibrate) navigator.vibrate(40);
+        // ── LinearAccelerationSensor → shake-to-shoot / shake-to-reload ──
+        if (hasLinearAccel) {
+            try {
+                accelerationSensor = new LinearAccelerationSensor({ frequency: 60 });
+                accelerationSensor.addEventListener('error', () => initFallbackMotion());
+                accelerationSensor.addEventListener('reading', () => {
+                    handleAccelReading(
+                        accelerationSensor.x,
+                        accelerationSensor.y,
+                        accelerationSensor.z
+                    );
+                });
+                accelerationSensor.start();
+                w3cAccelOk = true;
+                // Append to sensor mode badge
+                const m = store.getState().sensorMode;
+                store.getState().setSensorMode(m.includes('W3C') ? m + ' + LinAccel' : m);
+            } catch(e) {
+                console.warn('LinearAccelerationSensor unavailable:', e);
             }
-        }, { passive: true });
+        }
 
-        // ── Fire button touches
-        const fireBtn = document.getElementById('btn-fire');
-        fireBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            fire = true;
-        });
-        fireBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            fire = false;
-        });
+        if (!w3cAccelOk) initFallbackMotion();
+    }
 
-        // ── Virtual Joystick calculations
-        jContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            jTouchId = touch.identifier;
-            const rect = jContainer.getBoundingClientRect();
-            jCenterX = rect.left + rect.width / 2;
-            jCenterY = rect.top + rect.height / 2;
-        });
-
-        jContainer.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.touches.length; i++) {
-                const touch = e.touches[i];
-                if (touch.identifier === jTouchId) {
-                    const dx = touch.clientX - jCenterX;
-                    const dy = touch.clientY - jCenterY;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    
-                    if (dist === 0) {
-                        joystickX = 0;
-                        joystickY = 0;
-                        jHandle.style.left = '45px';
-                        jHandle.style.top = '45px';
-                    } else {
-                        const factor = Math.min(dist, jMaxDist) / dist;
-                        const handleX = dx * factor;
-                        const handleY = dy * factor;
-                        
-                        jHandle.style.left = `${45 + handleX}px`;
-                        jHandle.style.top = `${45 + handleY}px`;
-                        
-                        // Normalized value [-1, 1]
-                        joystickX = handleX / jMaxDist;
-                        joystickY = - (handleY / jMaxDist); // Invert: Up on screen = positive Y
+    // ── Fallback: DeviceOrientationEvent (older browsers / iOS) ──────────
+    function initFallbackOrientation() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // iOS 13+ requires explicit permission
+            DeviceOrientationEvent.requestPermission()
+                .then((state) => {
+                    if (state === 'granted') {
+                        window.addEventListener('deviceorientation', handleDeviceOrientation);
+                        store.getState().setSensorMode('DeviceOrientation (iOS)');
                     }
-                }
-            }
-        });
+                })
+                .catch(console.error);
+        } else {
+            window.addEventListener('deviceorientation', handleDeviceOrientation);
+            store.getState().setSensorMode('DeviceOrientation');
+        }
+    }
 
-        jContainer.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            joystickX = 0;
-            joystickY = 0;
-            jHandle.style.left = '45px';
-            jHandle.style.top = '45px';
-            jTouchId = null;
-        });
+    // ── Fallback: DeviceMotionEvent ───────────────────────────────────────
+    function initFallbackMotion() {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission()
+                .then((state) => { if (state === 'granted') window.addEventListener('devicemotion', handleDeviceMotion); })
+                .catch(console.error);
+        } else {
+            window.addEventListener('devicemotion', handleDeviceMotion);
+        }
+    }
 
-        // ── Unlock Screen & Init Audio/Sensors
-        document.getElementById('btn-request').addEventListener('click', () => {
-            overlay.style.display = 'none';
-            ui.style.display = 'block';
+    function handleDeviceOrientation(ev) {
+        // Landscape: beta = lateral tilt (pitch), alpha = compass (yaw), gamma = tilt forward (roll)
+        store.getState().setRawGyro(
+            ev.beta  ?? 0,
+            ev.alpha ?? 0,
+            ev.gamma ?? 0
+        );
+    }
 
-            // Attempt to lock screen orientation to landscape
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(() => {});
-            }
+    function handleDeviceMotion(ev) {
+        const acc = ev.acceleration || ev.accelerationIncludingGravity;
+        if (!acc) return;
+        handleAccelReading(acc.x ?? 0, acc.y ?? 0, acc.z ?? 0);
+    }
 
-            // Init sensors and websockets
-            initSensors();
-            connectSocket();
-        });
-    </script>
+    /**
+     * Shared accelerometer reading handler.
+     * Sharp sideways/forward jerk → fire (recoil gesture).
+     * Sharp downward snap → reload.
+     */
+    function handleAccelReading(ax, ay, az) {
+        const magXZ = Math.abs(ax) > Math.abs(az) ? Math.abs(ax) : Math.abs(az);
+        const magY  = ay;
+
+        // Jerk-to-shoot: spike on lateral/forward axis > 22 m/s²
+        if (magXZ > 22 && !shootCooldown && !reloadCooldown) {
+            store.getState().setFire(true);
+            shootCooldown = true;
+            setTimeout(() => store.getState().setFire(false), 30);
+            setTimeout(() => { shootCooldown = false; }, 200);
+            return;
+        }
+
+        // Snap-down to reload: sharp downward acceleration > 22 m/s²
+        if (magY < -22 && !reloadCooldown) {
+            store.getState().triggerReload();
+            reloadCooldown = true;
+            if (navigator.vibrate) navigator.vibrate(60);
+            setTimeout(() => { reloadCooldown = false; }, 2000);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // VIRTUAL JOYSTICK
+    // ─────────────────────────────────────────────────────────────────────
+    const jContainer = el('joystick-container');
+    const jHandle    = el('joystick-handle');
+    const JR         = 45; // max drag radius in px
+    let jTouchId = null, jCX = 0, jCY = 0;
+
+    jContainer.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const t = e.touches[0];
+        jTouchId = t.identifier;
+        const r = jContainer.getBoundingClientRect();
+        jCX = r.left + r.width / 2; jCY = r.top + r.height / 2;
+    });
+
+    jContainer.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        for (const t of e.touches) {
+            if (t.identifier !== jTouchId) continue;
+            const dx = t.clientX - jCX, dy = t.clientY - jCY;
+            const dist = Math.hypot(dx, dy);
+            if (dist === 0) { store.getState().setJoystick(0, 0); setHandle(45, 45); return; }
+            const f = Math.min(dist, JR) / dist;
+            const hx = dx * f, hy = dy * f;
+            setHandle(45 + hx, 45 + hy);
+            store.getState().setJoystick(hx / JR, -(hy / JR)); // Y inverted: up = +Y
+        }
+    });
+
+    jContainer.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        store.getState().setJoystick(0, 0);
+        setHandle(45, 45); jTouchId = null;
+    });
+
+    function setHandle(x, y) { jHandle.style.left = `${x}px`; jHandle.style.top = `${y}px`; }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // FIRE BUTTON
+    // ─────────────────────────────────────────────────────────────────────
+    const fireBtn = el('btn-fire');
+    fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); store.getState().setFire(true); fireBtn.classList.add('pressed'); });
+    fireBtn.addEventListener('touchend',   (e) => { e.preventDefault(); store.getState().setFire(false); fireBtn.classList.remove('pressed'); });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // WEAPON SWIPE GESTURE (swipe body area = switch weapon)
+    // ─────────────────────────────────────────────────────────────────────
+    let swipeStartX = 0, swipeStartTime = 0;
+
+    document.body.addEventListener('touchstart', (e) => {
+        const id = e.target.id;
+        if (id === 'btn-fire' || id === 'joystick-container' || id === 'joystick-handle') return;
+        swipeStartX = e.touches[0].clientX;
+        swipeStartTime = Date.now();
+    }, { passive: true });
+
+    document.body.addEventListener('touchend', (e) => {
+        const id = e.target.id;
+        if (id === 'btn-fire' || id === 'joystick-container' || id === 'joystick-handle') return;
+        const dx = e.changedTouches[0].clientX - swipeStartX;
+        if (Date.now() - swipeStartTime < 250 && Math.abs(dx) > 60) {
+            store.getState().setWeaponSwipe(dx > 0 ? 1 : -1);
+            if (navigator.vibrate) navigator.vibrate(40);
+        }
+    }, { passive: true });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CALIBRATE button
+    // ─────────────────────────────────────────────────────────────────────
+    el('btn-calibrate').addEventListener('click', () => {
+        store.getState().calibrate();
+        if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // READY BUTTON — request sensors + lock orientation + connect
+    // ─────────────────────────────────────────────────────────────────────
+    el('btn-request').addEventListener('click', async () => {
+        el('orientation-overlay').style.display = 'none';
+        el('controller-ui').style.display = 'block';
+
+        // Lock to landscape
+        if (screen.orientation?.lock) {
+            try { await screen.orientation.lock('landscape'); } catch(_) {}
+        }
+
+        // Init W3C sensors (with DeviceOrientation fallback)
+        await initW3CSensors();
+
+        // Connect WebSocket
+        connectSocket();
+    });
+
+</script>
 </body>
 </html>
