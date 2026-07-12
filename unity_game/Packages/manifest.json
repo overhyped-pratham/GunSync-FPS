@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "com.unity.cinemachine": "2.10.0",
+    "com.unity.inputsystem": "1.8.2",
+    "com.unity.ai.navigation": "2.0.4",
+    "com.unity.textmeshpro": "3.0.9",
+    "com.unity.render-pipelines.universal": "17.0.3",
+    "com.endel.nativewebsocket": "1.1.4"
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.endel.nativewebsocket"
+      ]
+    }
+  ]
+}

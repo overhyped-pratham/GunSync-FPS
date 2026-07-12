@@ -1,0 +1,47 @@
+# Secrets — never commit these
+backend/.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+
+# Flutter / Dart
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+mobile_app/.packages
+mobile_app/build/
+mobile_app/.pub-cache/
+mobile_app/android/.gradle/
+mobile_app/android/local.properties
+mobile_app/android/key.properties
+mobile_app/*.apk
+mobile_app/*.aab
+
+# Unity
+unity_game/Library/
+unity_game/Temp/
+unity_game/Logs/
+unity_game/obj/
+unity_game/Builds/
+unity_game/.vs/
+unity_game/*.csproj
+unity_game/*.sln
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
